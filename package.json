@@ -1,0 +1,73 @@
+{
+  "name": "spineframe-sync-agent",
+  "version": "1.0.0",
+  "description": "SpineFrame HL7 Sync Agent - Windows system tray application for syncing ProClaim HL7 files to SpineFrame cloud",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc && npm run copy-ui",
+    "copy-ui": "xcopy /E /I /Y src\\ui dist\\ui",
+    "watch": "tsc -w",
+    "start": "npm run build && electron .",
+    "dev": "tsc && npm run copy-ui && electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "hl7",
+    "spineframe",
+    "healthcare",
+    "sync",
+    "electron"
+  ],
+  "author": "SpineFrame",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/uuid": "^10.0.0",
+    "electron": "^39.2.4",
+    "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
+    "sharp": "^0.34.5",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "chokidar": "^5.0.0",
+    "uuid": "^13.0.0",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.spineframe.syncagent",
+    "productName": "SpineFrame Sync Agent",
+    "copyright": "Copyright © 2024 SpineFrame",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/icons",
+        "to": "icons"
+      }
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icons/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SpineFrame Sync Agent"
+    }
+  }
+}

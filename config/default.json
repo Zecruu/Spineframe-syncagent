@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "api": {
+    "baseUrl": "https://api.spineframe.com",
+    "clinicId": "",
+    "apiKey": ""
+  },
+  "folders": {
+    "watch": "",
+    "processed": "",
+    "failed": ""
+  },
+  "behavior": {
+    "autoStart": true,
+    "syncIntervalSeconds": 60,
+    "maxRetries": 3,
+    "deleteAfterSync": false,
+    "moveToProcessed": true,
+    "showNotifications": true,
+    "minimizeToTray": true
+  },
+  "logging": {
+    "level": "INFO",
+    "maxFileSizeMB": 10,
+    "retentionDays": 7
+  }
+}
+

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpineFrame Sync Agent - Setup</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wizard-container">
+    <header class="wizard-header">
+      <h1>🏥 SpineFrame Sync Agent Setup</h1>
+      <p>Let's configure your sync agent in a few simple steps</p>
+    </header>
+
+    <!-- Progress Steps -->
+    <div class="progress-steps">
+      <div class="step active" data-step="1">
+        <span class="step-number">1</span>
+        <span class="step-label">API Config</span>
+      </div>
+      <div class="step" data-step="2">
+        <span class="step-number">2</span>
+        <span class="step-label">Watch Folder</span>
+      </div>
+      <div class="step" data-step="3">
+        <span class="step-number">3</span>
+        <span class="step-label">Options</span>
+      </div>
+    </div>
+
+    <!-- Step 1: API Configuration -->
+    <section class="wizard-step" id="step1">
+      <h2>API Configuration</h2>
+      <div class="form-group">
+        <label for="apiUrl">SpineFrame API URL</label>
+        <input type="url" id="apiUrl" value="https://api.spineframe.com" placeholder="https://api.spineframe.com">
+      </div>
+      <div class="form-group">
+        <label for="clinicId">Clinic ID</label>
+        <input type="text" id="clinicId" placeholder="Your clinic ID from SpineFrame admin">
+      </div>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <div class="input-with-button">
+          <input type="password" id="apiKey" placeholder="64-character API key">
+          <button type="button" class="btn-toggle-visibility" id="toggleApiKey">👁️</button>
+        </div>
+      </div>
+      <button class="btn btn-secondary" id="testConnectionBtn">🔌 Test Connection</button>
+      <div class="connection-status" id="connectionStatus"></div>
+    </section>
+
+    <!-- Step 2: Watch Folder -->
+    <section class="wizard-step hidden" id="step2">
+      <h2>Watch Folder Configuration</h2>
+      <p class="step-description">Select the folder where ProClaim exports HL7 files</p>
+      <div class="form-group">
+        <label for="watchFolder">Watch Folder Path</label>
+        <div class="input-with-button">
+          <input type="text" id="watchFolder" placeholder="C:\ProClaim\HL7Export" readonly>
+          <button type="button" class="btn-browse" id="browseWatchFolder">📁 Browse</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="processedFolder">Processed Files Folder (optional)</label>
+        <div class="input-with-button">
+          <input type="text" id="processedFolder" placeholder="C:\ProClaim\HL7Export\Processed" readonly>
+          <button type="button" class="btn-browse" id="browseProcessedFolder">📁 Browse</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Processing Options -->
+    <section class="wizard-step hidden" id="step3">
+      <h2>Processing Options</h2>
+      <div class="form-group">
+        <label>After successful sync:</label>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="afterSync" value="move" checked>
+            <span>Move to Processed folder</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="afterSync" value="delete">
+            <span>Delete file</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="afterSync" value="leave">
+            <span>Leave in place</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group checkbox-group">
+        <label class="checkbox-option">
+          <input type="checkbox" id="autoStart" checked>
+          <span>Start automatically with Windows</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="showNotifications" checked>
+          <span>Show notifications for errors</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="retryFailed" checked>
+          <span>Retry failed files (max 3 attempts)</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Navigation Buttons -->
+    <div class="wizard-nav">
+      <button class="btn btn-secondary" id="prevBtn" disabled>← Back</button>
+      <button class="btn btn-primary" id="nextBtn">Next →</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
+

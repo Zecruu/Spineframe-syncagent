@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - SpineFrame Sync Agent</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="settings-container">
+    <header class="settings-header">
+      <h1>⚙️ Settings</h1>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="connection">Connection</button>
+      <button class="tab" data-tab="folders">Folders</button>
+      <button class="tab" data-tab="behavior">Behavior</button>
+      <button class="tab" data-tab="logs">Logs</button>
+    </div>
+
+    <!-- Connection Tab -->
+    <section class="tab-content active" id="connection">
+      <div class="form-group">
+        <label for="apiUrl">API URL</label>
+        <input type="url" id="apiUrl" placeholder="https://api.spineframe.com">
+      </div>
+      <div class="form-group">
+        <label for="clinicId">Clinic ID</label>
+        <input type="text" id="clinicId">
+      </div>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <div class="input-with-button">
+          <input type="password" id="apiKey">
+          <button type="button" id="toggleApiKey">👁️</button>
+        </div>
+      </div>
+      <button class="btn btn-secondary" id="testConnection">🔌 Test Connection</button>
+      <div id="connectionStatus" class="status-message"></div>
+    </section>
+
+    <!-- Folders Tab -->
+    <section class="tab-content" id="folders">
+      <div class="form-group">
+        <label for="watchFolder">Watch Folder</label>
+        <div class="input-with-button">
+          <input type="text" id="watchFolder" readonly>
+          <button type="button" id="browseWatch">📁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="processedFolder">Processed Folder</label>
+        <div class="input-with-button">
+          <input type="text" id="processedFolder" readonly>
+          <button type="button" id="browseProcessed">📁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="failedFolder">Failed Folder</label>
+        <div class="input-with-button">
+          <input type="text" id="failedFolder" readonly>
+          <button type="button" id="browseFailed">📁</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Behavior Tab -->
+    <section class="tab-content" id="behavior">
+      <div class="form-group checkbox-group">
+        <label class="checkbox-option">
+          <input type="checkbox" id="autoStart">
+          <span>Start with Windows</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="moveToProcessed">
+          <span>Move files to Processed folder</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="deleteAfterSync">
+          <span>Delete files after sync</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="showNotifications">
+          <span>Show notifications</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="minimizeToTray">
+          <span>Minimize to tray on close</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="syncInterval">Heartbeat Interval (seconds)</label>
+        <input type="number" id="syncInterval" min="10" max="300" value="60">
+      </div>
+      <div class="form-group">
+        <label for="maxRetries">Max Retries</label>
+        <input type="number" id="maxRetries" min="0" max="10" value="3">
+      </div>
+    </section>
+
+    <!-- Logs Tab -->
+    <section class="tab-content" id="logs">
+      <div class="form-group">
+        <label for="logLevel">Log Level</label>
+        <select id="logLevel">
+          <option value="ERROR">Error</option>
+          <option value="WARNING">Warning</option>
+          <option value="INFO">Info</option>
+          <option value="DEBUG">Debug</option>
+        </select>
+      </div>
+      <div class="log-actions">
+        <button class="btn btn-secondary" id="openLogFolder">📁 Open Log Folder</button>
+        <button class="btn btn-secondary" id="clearLogs">🗑️ Clear Old Logs</button>
+      </div>
+      <div class="log-info">
+        <p>Log files are stored for <strong>7 days</strong></p>
+        <p>Max file size: <strong>10 MB</strong></p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="settings-footer">
+      <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn">💾 Save Settings</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
+

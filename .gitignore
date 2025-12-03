@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+out/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Config (may contain secrets)
+# config.json
+
+# Test coverage
+coverage/
+
+# Temp files
+*.tmp
+*.temp
+
+# Lock files from other package managers
+yarn.lock
+pnpm-lock.yaml
+

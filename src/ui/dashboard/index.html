@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpineFrame Sync Agent</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-section">
+        <img src="../../assets/icons/icon.png" alt="SpineFrame" class="logo" onerror="this.style.display='none'">
+        <h1>SpineFrame Sync Agent</h1>
+      </div>
+      <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot connected"></span>
+        <span class="status-text">Connected to SpineFrame</span>
+      </div>
+    </header>
+
+    <!-- Stats Panel -->
+    <section class="stats-panel">
+      <div class="stat-card">
+        <div class="stat-value" id="syncedToday">0</div>
+        <div class="stat-label">Files synced today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="pending">0</div>
+        <div class="stat-label">Files pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="lastSync">Never</div>
+        <div class="stat-label">Last sync</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="errorsToday">0</div>
+        <div class="stat-label">Errors (24h)</div>
+      </div>
+    </section>
+
+    <!-- Activity Log -->
+    <section class="activity-section">
+      <h2>Recent Activity</h2>
+      <div class="activity-log" id="activityLog">
+        <div class="activity-item info">
+          <span class="activity-time">--:--</span>
+          <span class="activity-icon">ℹ️</span>
+          <span class="activity-message">Waiting for activity...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="actions">
+      <button class="btn btn-primary" id="syncNowBtn">
+        🔄 Sync Now
+      </button>
+      <button class="btn btn-secondary" id="openFolderBtn">
+        📁 Open Watch Folder
+      </button>
+      <button class="btn btn-icon" id="settingsBtn" title="Settings">
+        ⚙️
+      </button>
+    </section>
+
+    <!-- Pause Banner -->
+    <div class="pause-banner" id="pauseBanner" style="display: none;">
+      <span>⏸️ Syncing is paused</span>
+      <button class="btn btn-small" id="resumeBtn">Resume</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
+
