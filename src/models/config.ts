@@ -28,12 +28,21 @@ export interface LoggingConfig {
   retentionDays: number;
 }
 
+export interface ExportConfig {
+  enabled: boolean;
+  pollIntervalSeconds: number;
+  outputFolder: string;
+  format: 'hl7' | 'x12' | 'csv' | 'json';
+  fileNamePattern: string;
+}
+
 export interface AppConfig {
   version: string;
   api: ApiConfig;
   folders: FoldersConfig;
   behavior: BehaviorConfig;
   logging: LoggingConfig;
+  export: ExportConfig;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -61,6 +70,13 @@ export const DEFAULT_CONFIG: AppConfig = {
     level: 'INFO',
     maxFileSizeMB: 10,
     retentionDays: 7
+  },
+  export: {
+    enabled: false,
+    pollIntervalSeconds: 30,
+    outputFolder: '',
+    format: 'hl7',
+    fileNamePattern: 'DFT_{clinicCode}_{timestamp}.hl7'
   }
 };
 

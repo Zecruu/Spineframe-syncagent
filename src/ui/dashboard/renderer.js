@@ -3,8 +3,8 @@ const { ipcRenderer } = require('electron');
 // DOM Elements
 const statusIndicator = document.getElementById('statusIndicator');
 const syncedToday = document.getElementById('syncedToday');
+const exportedToday = document.getElementById('exportedToday');
 const pending = document.getElementById('pending');
-const lastSync = document.getElementById('lastSync');
 const errorsToday = document.getElementById('errorsToday');
 const activityLog = document.getElementById('activityLog');
 const syncNowBtn = document.getElementById('syncNowBtn');
@@ -21,9 +21,10 @@ let config = null;
 async function init() {
   config = await ipcRenderer.invoke('get-config');
   const stats = await ipcRenderer.invoke('get-stats');
+  const exportStats = await ipcRenderer.invoke('get-export-stats');
   const activity = await ipcRenderer.invoke('get-activity-log');
 
-  if (stats) updateStats(stats);
+  if (stats) updateStats(stats, exportStats);
   if (activity) {
     activityLog.innerHTML = '';
     activity.slice(0, 20).forEach(item => addActivityItem(item));
@@ -31,17 +32,11 @@ async function init() {
 }
 
 // Update stats display
-function updateStats(stats) {
+function updateStats(stats, exportStats) {
   syncedToday.textContent = stats.syncedToday || 0;
+  exportedToday.textContent = exportStats?.exportedToday || 0;
   pending.textContent = stats.pending || 0;
-  errorsToday.textContent = stats.errorsToday || 0;
-  
-  if (stats.lastSyncAt) {
-    const lastSyncDate = new Date(stats.lastSyncAt);
-    lastSync.textContent = formatTimeAgo(lastSyncDate);
-  } else {
-    lastSync.textContent = 'Never';
-  }
+  errorsToday.textContent = (stats.errorsToday || 0) + (exportStats?.errorsToday || 0);
 }
 
 // Format time ago
@@ -138,10 +133,10 @@ ipcRenderer.on('paused', (event, paused) => {
 // Initialize on load
 init();
 
-// Refresh last sync time every minute
-setInterval(() => {
-  ipcRenderer.invoke('get-stats').then(stats => {
-    if (stats) updateStats(stats);
-  });
+// Refresh stats every minute
+setInterval(async () => {
+  const stats = await ipcRenderer.invoke('get-stats');
+  const exportStats = await ipcRenderer.invoke('get-export-stats');
+  if (stats) updateStats(stats, exportStats);
 }, 60000);
 

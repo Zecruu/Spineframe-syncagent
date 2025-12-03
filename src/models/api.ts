@@ -115,3 +115,99 @@ export interface ApiErrorResponse {
   details?: string;
 }
 
+// Export (SpineFrame → ProClaim) Types
+
+export interface ExportClinicInfo {
+  code: string;
+  name: string;
+  npi: string;
+  taxId: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  emrLinkType: string;
+  emrName: string;
+}
+
+export interface ExportPatientInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  dob: string;
+  sex: string;
+  phone?: string;
+  email?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  proclaimPatientRecord?: string;
+  proclaimInternalControl?: string;
+  insurance?: Array<{
+    provider: string;
+    memberId: string;
+    groupNumber?: string;
+  }>;
+}
+
+export interface ExportPayerInfo {
+  name: string;
+  payerId: string;
+  memberId: string;
+  groupNumber?: string;
+}
+
+export interface ExportBillingCode {
+  code: string;
+  description: string;
+  quantity: number;
+  chargeAmount: number;
+  modifiers: string[];
+}
+
+export interface ExportRenderingProvider {
+  name: string;
+  npi: string;
+}
+
+export interface ExportClaim {
+  claimId: string;
+  dateOfService: string;
+  createdAt: string;
+  patient: ExportPatientInfo;
+  payer: ExportPayerInfo;
+  billingCodes: ExportBillingCode[];
+  diagnosisCodes: string[];
+  totalChargeAmount: number;
+  copay?: number;
+  renderingProvider: ExportRenderingProvider;
+  placeOfService: string;
+}
+
+export interface PendingExportsResponse {
+  ok: boolean;
+  count: number;
+  format: string;
+  clinic: ExportClinicInfo;
+  claims: ExportClaim[];
+}
+
+export interface MarkExportedRequest {
+  claimIds: string[];
+  fileName: string;
+  format: string;
+  hostname: string;
+}
+
+export interface MarkExportedResponse {
+  ok: boolean;
+  markedCount: number;
+  message: string;
+}
+

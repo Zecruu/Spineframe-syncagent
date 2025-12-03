@@ -11,6 +11,9 @@ import {
   NoteResponse,
   StatusResponse,
   ApiErrorResponse,
+  PendingExportsResponse,
+  MarkExportedRequest,
+  MarkExportedResponse,
 } from '../models/api';
 import { AppConfig } from '../models/config';
 import { getLogger, maskApiKey } from './logger';
@@ -118,6 +121,27 @@ export class SpineFrameApiClient {
 
   async getStatus(): Promise<StatusResponse> {
     const response = await this.client.get<StatusResponse>('/api/hl7/status');
+    return response.data;
+  }
+
+  // Export endpoints (SpineFrame → ProClaim)
+  async getPendingExports(): Promise<PendingExportsResponse> {
+    const response = await this.client.get<PendingExportsResponse>('/api/hl7/pending-exports');
+    if (response.data.count > 0) {
+      logger.info(`Retrieved ${response.data.count} pending exports`);
+    }
+    return response.data;
+  }
+
+  async markExported(claimIds: string[], fileName: string, format: string): Promise<MarkExportedResponse> {
+    const request: MarkExportedRequest = {
+      claimIds,
+      fileName,
+      format,
+      hostname: os.hostname(),
+    };
+    const response = await this.client.post<MarkExportedResponse>('/api/hl7/mark-exported', request);
+    logger.info(`Marked ${response.data.markedCount} claims as exported`);
     return response.data;
   }
 }

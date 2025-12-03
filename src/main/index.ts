@@ -1,9 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell, Notification } from 'electron';
 import path from 'path';
+import { execSync } from 'child_process';
 import { initializeLogger, getLogger } from '../services/logger';
 import { loadConfig, saveConfig, configExists, getConfigDir } from '../services/configManager';
 import { initializeApiClient, getApiClient, SpineFrameApiClient } from '../services/apiClient';
 import { SyncService, SyncStats, SyncActivityItem } from '../services/syncService';
+import { ExportService, ExportStats } from '../services/exportService';
 import { TrayManager } from './tray';
 import { AppConfig, DEFAULT_CONFIG } from '../models/config';
 import { setAutoStart, getAutoStartEnabled } from '../services/autoStart';
@@ -14,6 +16,7 @@ let settingsWindow: BrowserWindow | null = null;
 let wizardWindow: BrowserWindow | null = null;
 let trayManager: TrayManager | null = null;
 let syncService: SyncService | null = null;
+let exportService: ExportService | null = null;
 let config: AppConfig;
 let logger: ReturnType<typeof getLogger>;
 
@@ -188,6 +191,20 @@ async function initializeApp(): Promise<void> {
     trayManager.setStatus('error');
   }
 
+  // Start export service (if enabled)
+  if (config.export?.enabled) {
+    try {
+      const apiClient = getApiClient();
+      if (apiClient) {
+        exportService = new ExportService(config, apiClient);
+        await exportService.start();
+        logger.info('Export service started');
+      }
+    } catch (error) {
+      logger.error(`Failed to start export service: ${error}`);
+    }
+  }
+
   // Initialize auto-updater (only in production)
   if (!isDev) {
     initializeAutoUpdater();
@@ -322,6 +339,36 @@ ipcMain.handle('get-update-status', () => {
   return getUpdateStatus();
 });
 
+// Uninstall handler
+ipcMain.handle('uninstall-app', async () => {
+  try {
+    // Get the uninstaller path from the app's installation directory
+    const appPath = app.getPath('exe');
+    const appDir = path.dirname(appPath);
+    const uninstallerPath = path.join(appDir, 'Uninstall SpineFrame Sync Agent.exe');
+
+    // Open the uninstaller
+    shell.openPath(uninstallerPath);
+
+    // Quit the app after a short delay to allow the uninstaller to start
+    setTimeout(() => {
+      app.quit();
+    }, 1000);
+
+    return { success: true };
+  } catch (error) {
+    logger.error(`Failed to launch uninstaller: ${error}`);
+    // Fallback: Open Windows Apps & Features
+    shell.openExternal('ms-settings:appsfeatures');
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// Export stats handler
+ipcMain.handle('get-export-stats', () => {
+  return exportService?.getStats() || { exportedToday: 0, lastExportAt: null, errorsToday: 0 };
+});
+
 ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
   saveConfig(newConfig);
   config = newConfig;
@@ -379,6 +426,17 @@ ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
   } catch (error) {
     logger.error(`Failed to start sync service: ${error}`);
     trayManager.setStatus('error');
+  }
+
+  // Start export service if enabled
+  if (config.export?.enabled && config.export?.outputFolder) {
+    try {
+      exportService = new ExportService(config, apiClient);
+      await exportService.start();
+      logger.info('Export service started');
+    } catch (error) {
+      logger.error(`Failed to start export service: ${error}`);
+    }
   }
 });
 
