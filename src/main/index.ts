@@ -2,10 +2,10 @@ import { app, BrowserWindow, ipcMain, shell, Notification } from 'electron';
 import path from 'path';
 import { initializeLogger, getLogger } from '../services/logger';
 import { loadConfig, saveConfig, configExists, getConfigDir } from '../services/configManager';
-import { initializeApiClient, getApiClient } from '../services/apiClient';
+import { initializeApiClient, getApiClient, SpineFrameApiClient } from '../services/apiClient';
 import { SyncService, SyncStats, SyncActivityItem } from '../services/syncService';
 import { TrayManager } from './tray';
-import { AppConfig } from '../models/config';
+import { AppConfig, DEFAULT_CONFIG } from '../models/config';
 import { setAutoStart, getAutoStartEnabled } from '../services/autoStart';
 
 let mainWindow: BrowserWindow | null = null;
@@ -224,7 +224,18 @@ ipcMain.handle('save-config', async (_event, newConfig: AppConfig) => {
   return { success: true };
 });
 
-ipcMain.handle('test-connection', async () => {
+ipcMain.handle('test-connection', async (_event, testConfig?: { api: { baseUrl: string; clinicId: string; apiKey: string } }) => {
+  // If testConfig is provided (from wizard), create a temporary client
+  if (testConfig) {
+    const tempConfig = {
+      ...DEFAULT_CONFIG,
+      api: testConfig.api,
+    } as AppConfig;
+    const tempClient = new SpineFrameApiClient(tempConfig);
+    return tempClient.testConnection();
+  }
+
+  // Otherwise use the existing client
   const apiClient = getApiClient();
   if (!apiClient) return { ok: false, message: 'API client not initialized' };
   return apiClient.testConnection();
