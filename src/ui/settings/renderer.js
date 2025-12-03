@@ -146,10 +146,65 @@ document.getElementById('openLogFolder').addEventListener('click', () => {
   ipcRenderer.invoke('open-log-folder');
 });
 
+// About tab - Updates
+const updateStatus = document.getElementById('updateStatus');
+const checkUpdatesBtn = document.getElementById('checkUpdatesBtn');
+const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
+const installUpdateBtn = document.getElementById('installUpdateBtn');
+const githubLink = document.getElementById('githubLink');
+
+checkUpdatesBtn.addEventListener('click', async () => {
+  updateStatus.innerHTML = '<p>Checking for updates...</p>';
+  checkUpdatesBtn.disabled = true;
+
+  const result = await ipcRenderer.invoke('check-for-updates');
+
+  if (result.available) {
+    updateStatus.innerHTML = `<p class="update-available">✨ ${result.message}</p>`;
+    downloadUpdateBtn.style.display = 'inline-block';
+  } else {
+    updateStatus.innerHTML = `<p class="up-to-date">✅ ${result.message}</p>`;
+  }
+  checkUpdatesBtn.disabled = false;
+});
+
+downloadUpdateBtn.addEventListener('click', async () => {
+  updateStatus.innerHTML = '<p>Downloading update...</p>';
+  downloadUpdateBtn.disabled = true;
+
+  await ipcRenderer.invoke('download-update');
+
+  updateStatus.innerHTML = '<p class="update-ready">✅ Update downloaded! Click "Install & Restart" to apply.</p>';
+  downloadUpdateBtn.style.display = 'none';
+  installUpdateBtn.style.display = 'inline-block';
+});
+
+installUpdateBtn.addEventListener('click', () => {
+  ipcRenderer.invoke('install-update');
+});
+
+githubLink.addEventListener('click', (e) => {
+  e.preventDefault();
+  require('electron').shell.openExternal('https://github.com/Zecruu/Spineframe-syncagent');
+});
+
+// Check update status on load
+async function checkUpdateStatus() {
+  const status = await ipcRenderer.invoke('get-update-status');
+  if (status.downloaded) {
+    updateStatus.innerHTML = '<p class="update-ready">✅ Update ready to install!</p>';
+    installUpdateBtn.style.display = 'inline-block';
+  } else if (status.available) {
+    updateStatus.innerHTML = `<p class="update-available">✨ Version ${status.version} is available!</p>`;
+    downloadUpdateBtn.style.display = 'inline-block';
+  }
+}
+
 // Footer buttons
 document.getElementById('saveBtn').addEventListener('click', saveConfig);
 document.getElementById('cancelBtn').addEventListener('click', () => window.close());
 
 // Initialize
 loadConfig();
+checkUpdateStatus();
 

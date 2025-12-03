@@ -7,6 +7,7 @@ import { SyncService, SyncStats, SyncActivityItem } from '../services/syncServic
 import { TrayManager } from './tray';
 import { AppConfig, DEFAULT_CONFIG } from '../models/config';
 import { setAutoStart, getAutoStartEnabled } from '../services/autoStart';
+import { initializeAutoUpdater, checkForUpdatesManual, downloadUpdate, quitAndInstall, getUpdateStatus } from '../services/autoUpdater';
 
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
@@ -151,6 +152,28 @@ async function initializeApp(): Promise<void> {
     onViewLogs: () => {
       shell.openPath(path.join(configDir, 'logs'));
     },
+    onCheckForUpdates: async () => {
+      const result = await checkForUpdatesManual();
+      if (result.available) {
+        const { dialog } = await import('electron');
+        const response = await dialog.showMessageBox({
+          type: 'info',
+          title: 'Update Available',
+          message: result.message,
+          buttons: ['Download Now', 'Later'],
+        });
+        if (response.response === 0) {
+          downloadUpdate();
+        }
+      } else {
+        const { dialog } = await import('electron');
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'No Updates',
+          message: result.message,
+        });
+      }
+    },
     onExit: () => {
       app.quit();
     },
@@ -163,6 +186,11 @@ async function initializeApp(): Promise<void> {
   } catch (error) {
     logger.error(`Failed to start sync service: ${error}`);
     trayManager.setStatus('error');
+  }
+
+  // Initialize auto-updater (only in production)
+  if (!isDev) {
+    initializeAutoUpdater();
   }
 }
 
@@ -276,6 +304,24 @@ ipcMain.handle('select-folder', async () => {
   return result.filePaths[0] || null;
 });
 
+// Auto-update IPC handlers
+ipcMain.handle('check-for-updates', async () => {
+  return checkForUpdatesManual();
+});
+
+ipcMain.handle('download-update', async () => {
+  await downloadUpdate();
+  return { success: true };
+});
+
+ipcMain.handle('install-update', () => {
+  quitAndInstall();
+});
+
+ipcMain.handle('get-update-status', () => {
+  return getUpdateStatus();
+});
+
 ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
   saveConfig(newConfig);
   config = newConfig;
@@ -302,6 +348,28 @@ ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
     onSettings: () => createSettingsWindow(),
     onOpenWatchFolder: () => config?.folders?.watch && shell.openPath(config.folders.watch),
     onViewLogs: () => shell.openPath(path.join(getConfigDir(), 'logs')),
+    onCheckForUpdates: async () => {
+      const result = await checkForUpdatesManual();
+      if (result.available) {
+        const { dialog } = await import('electron');
+        const response = await dialog.showMessageBox({
+          type: 'info',
+          title: 'Update Available',
+          message: result.message,
+          buttons: ['Download Now', 'Later'],
+        });
+        if (response.response === 0) {
+          downloadUpdate();
+        }
+      } else {
+        const { dialog } = await import('electron');
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'No Updates',
+          message: result.message,
+        });
+      }
+    },
     onExit: () => app.quit(),
   });
 

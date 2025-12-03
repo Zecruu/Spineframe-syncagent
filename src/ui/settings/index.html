@@ -18,6 +18,7 @@
       <button class="tab" data-tab="folders">Folders</button>
       <button class="tab" data-tab="behavior">Behavior</button>
       <button class="tab" data-tab="logs">Logs</button>
+      <button class="tab" data-tab="about">About</button>
     </div>
 
     <!-- Connection Tab -->
@@ -118,6 +119,31 @@
       <div class="log-info">
         <p>Log files are stored for <strong>7 days</strong></p>
         <p>Max file size: <strong>10 MB</strong></p>
+      </div>
+    </section>
+
+    <!-- About Tab -->
+    <section class="tab-content" id="about">
+      <div class="about-header">
+        <h2>🦴 SpineFrame Sync Agent</h2>
+        <p class="version">Version <span id="currentVersion">1.0.0</span></p>
+      </div>
+      <div class="about-description">
+        <p>Synchronizes HL7 files from ProClaim to SpineFrame cloud.</p>
+      </div>
+      <div class="update-section">
+        <h3>Updates</h3>
+        <div id="updateStatus" class="update-status">
+          <p>Click "Check for Updates" to see if a new version is available.</p>
+        </div>
+        <div class="update-actions">
+          <button class="btn btn-secondary" id="checkUpdatesBtn">🔄 Check for Updates</button>
+          <button class="btn btn-primary" id="downloadUpdateBtn" style="display: none;">⬇️ Download Update</button>
+          <button class="btn btn-primary" id="installUpdateBtn" style="display: none;">🚀 Install & Restart</button>
+        </div>
+      </div>
+      <div class="about-links">
+        <a href="#" id="githubLink">📂 View on GitHub</a>
       </div>
     </section>
 

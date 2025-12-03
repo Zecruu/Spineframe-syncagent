@@ -11,6 +11,7 @@ interface TrayCallbacks {
   onSettings: () => void;
   onOpenWatchFolder: () => void;
   onViewLogs: () => void;
+  onCheckForUpdates: () => void;
   onExit: () => void;
 }
 
@@ -112,6 +113,10 @@ export class TrayManager {
       {
         label: '📋 View Logs',
         click: () => this.callbacks.onViewLogs(),
+      },
+      {
+        label: '🔄 Check for Updates',
+        click: () => this.callbacks.onCheckForUpdates(),
       },
       { type: 'separator' },
       {
