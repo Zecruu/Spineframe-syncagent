@@ -39,7 +39,7 @@ export interface AppConfig {
 export const DEFAULT_CONFIG: AppConfig = {
   version: '1.0',
   api: {
-    baseUrl: 'https://api.spineframe.com',
+    baseUrl: 'https://app.spineframe.com',
     clinicId: '',
     apiKey: ''
   },
