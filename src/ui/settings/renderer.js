@@ -143,7 +143,7 @@ deleteAfterSync.addEventListener('change', () => {
 
 // Log actions
 document.getElementById('openLogFolder').addEventListener('click', () => {
-  ipcRenderer.invoke('open-folder', '%APPDATA%/SpineFrameSyncAgent/logs');
+  ipcRenderer.invoke('open-log-folder');
 });
 
 // Footer buttons

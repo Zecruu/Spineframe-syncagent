@@ -257,6 +257,17 @@ ipcMain.handle('open-folder', (_event, folderPath: string) => {
   shell.openPath(folderPath);
 });
 
+// Handle open-settings from dashboard
+ipcMain.on('open-settings', () => {
+  createSettingsWindow();
+});
+
+// Handle open-log-folder from settings
+ipcMain.handle('open-log-folder', () => {
+  const logsPath = path.join(getConfigDir(), 'logs');
+  shell.openPath(logsPath);
+});
+
 ipcMain.handle('select-folder', async () => {
   const { dialog } = await import('electron');
   const result = await dialog.showOpenDialog({
