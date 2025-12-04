@@ -64,11 +64,19 @@ export function loadConfig(): AppConfig {
 
 export function saveConfig(config: AppConfig): void {
   initializeConfigManager();
-  
+
   try {
-    const configToSave = { ...config };
-    
-    // Encrypt API key
+    // Deep copy to avoid modifying the original config
+    const configToSave: AppConfig = {
+      ...config,
+      api: { ...config.api },
+      folders: { ...config.folders },
+      behavior: { ...config.behavior },
+      logging: { ...config.logging },
+      export: { ...config.export },
+    };
+
+    // Encrypt API key for storage
     if (configToSave.api.apiKey && !configToSave.api.apiKey.startsWith('encrypted:')) {
       if (safeStorage.isEncryptionAvailable()) {
         const encryptedBuffer = safeStorage.encryptString(configToSave.api.apiKey);
@@ -80,7 +88,7 @@ export function saveConfig(config: AppConfig): void {
     }
 
     fs.writeFileSync(configPath, JSON.stringify(configToSave, null, 2), 'utf-8');
-    currentConfig = config;
+    currentConfig = config; // Keep the unencrypted version in memory
     logger.info('Config saved successfully');
   } catch (error) {
     logger.error(`Failed to save config: ${error}`);

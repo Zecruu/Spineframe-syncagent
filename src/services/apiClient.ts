@@ -64,8 +64,8 @@ export class SpineFrameApiClient {
   updateConfig(config: AppConfig): void {
     this.config = config;
     this.client.defaults.baseURL = config.api.baseUrl;
-    this.client.defaults.headers['Authorization'] = `Bearer ${config.api.apiKey}`;
-    this.client.defaults.headers['X-Clinic-Id'] = config.api.clinicId;
+    this.client.defaults.headers.common['Authorization'] = `Bearer ${config.api.apiKey}`;
+    this.client.defaults.headers.common['X-Clinic-Id'] = config.api.clinicId;
   }
 
   setLastSyncAt(dateTime: string): void {
