@@ -7,6 +7,7 @@ const logger = getLogger('AutoUpdater');
 let updateAvailable = false;
 let updateDownloaded = false;
 let latestVersion: string | null = null;
+let downloadResolve: ((value: boolean) => void) | null = null;
 
 export function initializeAutoUpdater(): void {
   // Configure auto-updater
@@ -57,6 +58,12 @@ export function initializeAutoUpdater(): void {
     logger.info(`Update downloaded: v${info.version}`);
     updateDownloaded = true;
 
+    // Resolve the download promise if waiting
+    if (downloadResolve) {
+      downloadResolve(true);
+      downloadResolve = null;
+    }
+
     // Show notification
     if (Notification.isSupported()) {
       const notification = new Notification({
@@ -73,6 +80,11 @@ export function initializeAutoUpdater(): void {
 
   autoUpdater.on('error', (error) => {
     logger.error(`Auto-updater error: ${error.message}`);
+    // Reject the download promise if waiting
+    if (downloadResolve) {
+      downloadResolve(false);
+      downloadResolve = null;
+    }
   });
 
   // Check for updates on startup (after 10 seconds)
@@ -99,15 +111,40 @@ export async function checkForUpdates(): Promise<{ available: boolean; version?:
   }
 }
 
-export async function downloadUpdate(): Promise<void> {
+export async function downloadUpdate(): Promise<boolean> {
   try {
-    await autoUpdater.downloadUpdate();
+    logger.info('Starting update download...');
+
+    // Create a promise that resolves when download is complete
+    const downloadPromise = new Promise<boolean>((resolve) => {
+      downloadResolve = resolve;
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        if (downloadResolve) {
+          logger.warn('Download timed out');
+          downloadResolve(false);
+          downloadResolve = null;
+        }
+      }, 5 * 60 * 1000);
+    });
+
+    // Start the download
+    autoUpdater.downloadUpdate();
+
+    // Wait for download to complete
+    const success = await downloadPromise;
+    logger.info(`Update download completed: ${success}`);
+    return success;
   } catch (error) {
     logger.error(`Failed to download update: ${(error as Error).message}`);
+    return false;
   }
 }
 
 export function quitAndInstall(): void {
+  logger.info('Quitting and installing update...');
+  // isSilent = false (show installer), isForceRunAfter = true (restart app after install)
   autoUpdater.quitAndInstall(false, true);
 }
 
