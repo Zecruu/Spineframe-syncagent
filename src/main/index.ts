@@ -262,6 +262,7 @@ ipcMain.handle('save-config', async (_event, newConfig: AppConfig) => {
   config = newConfig;
   syncService?.updateConfig(config);
   getApiClient()?.updateConfig(config);
+  exportService?.updateConfig(config, getApiClient() ?? undefined);
 
   // Update auto-start setting
   setAutoStart(newConfig.behavior?.autoStart ?? false);
