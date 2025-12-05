@@ -200,14 +200,19 @@ checkUpdatesBtn.addEventListener('click', async () => {
 });
 
 downloadUpdateBtn.addEventListener('click', async () => {
-  updateStatus.innerHTML = '<p>Downloading update...</p>';
+  updateStatus.innerHTML = '<p>⬇️ Downloading update... Please wait.</p>';
   downloadUpdateBtn.disabled = true;
 
-  await ipcRenderer.invoke('download-update');
+  const result = await ipcRenderer.invoke('download-update');
 
-  updateStatus.innerHTML = '<p class="update-ready">✅ Update downloaded! Click "Install & Restart" to apply.</p>';
-  downloadUpdateBtn.style.display = 'none';
-  installUpdateBtn.style.display = 'inline-block';
+  if (result.success) {
+    updateStatus.innerHTML = '<p class="update-ready">✅ Update downloaded! Click "Install & Restart" to apply.</p>';
+    downloadUpdateBtn.style.display = 'none';
+    installUpdateBtn.style.display = 'inline-block';
+  } else {
+    updateStatus.innerHTML = '<p class="error">❌ Download failed. Please try again.</p>';
+    downloadUpdateBtn.disabled = false;
+  }
 });
 
 installUpdateBtn.addEventListener('click', () => {

@@ -144,8 +144,20 @@ export async function downloadUpdate(): Promise<boolean> {
 
 export function quitAndInstall(): void {
   logger.info('Quitting and installing update...');
-  // isSilent = false (show installer), isForceRunAfter = true (restart app after install)
-  autoUpdater.quitAndInstall(false, true);
+
+  // Force close all windows first
+  const { BrowserWindow, app } = require('electron');
+  const windows = BrowserWindow.getAllWindows();
+  windows.forEach((win: Electron.BrowserWindow) => {
+    win.removeAllListeners('close');
+    win.close();
+  });
+
+  // Small delay to ensure windows are closed, then quit and install
+  setTimeout(() => {
+    // isSilent = false (show installer), isForceRunAfter = true (restart app after install)
+    autoUpdater.quitAndInstall(false, true);
+  }, 500);
 }
 
 export function getUpdateStatus(): { available: boolean; downloaded: boolean; version: string | null } {

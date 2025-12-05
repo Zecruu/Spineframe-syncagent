@@ -332,8 +332,8 @@ ipcMain.handle('check-for-updates', async () => {
 });
 
 ipcMain.handle('download-update', async () => {
-  await downloadUpdate();
-  return { success: true };
+  const success = await downloadUpdate();
+  return { success };
 });
 
 ipcMain.handle('install-update', () => {
