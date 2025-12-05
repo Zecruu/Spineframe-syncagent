@@ -307,7 +307,10 @@ export class SyncService extends EventEmitter {
     }
   }
 
-  updateConfig(config: AppConfig): void {
+  updateConfig(config: AppConfig, apiClient?: SpineFrameApiClient): void {
     this.config = config;
+    if (apiClient) {
+      this.apiClient = apiClient;
+    }
   }
 }

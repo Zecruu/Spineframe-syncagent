@@ -261,9 +261,12 @@ ipcMain.handle('get-config', () => config);
 ipcMain.handle('save-config', async (_event, newConfig: AppConfig) => {
   saveConfig(newConfig);
   config = newConfig;
-  syncService?.updateConfig(config);
-  getApiClient()?.updateConfig(config);
-  exportService?.updateConfig(config, getApiClient() ?? undefined);
+
+  // Update all services with new config and API client
+  const apiClient = getApiClient();
+  apiClient?.updateConfig(config);
+  syncService?.updateConfig(config, apiClient ?? undefined);
+  exportService?.updateConfig(config, apiClient ?? undefined);
 
   // Update auto-start setting
   setAutoStart(newConfig.behavior?.autoStart ?? false);
