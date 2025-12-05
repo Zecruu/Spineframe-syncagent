@@ -1,5 +1,12 @@
 const { ipcRenderer } = require('electron');
 
+// Load app version
+async function loadAppVersion() {
+  const version = await ipcRenderer.invoke('get-app-version');
+  document.getElementById('currentVersion').textContent = version;
+}
+loadAppVersion();
+
 // Tab functionality
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');

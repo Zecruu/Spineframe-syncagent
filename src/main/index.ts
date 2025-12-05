@@ -256,6 +256,7 @@ function setupSyncServiceListeners(): void {
 }
 
 // IPC Handlers
+ipcMain.handle('get-app-version', () => app.getVersion());
 ipcMain.handle('get-config', () => config);
 ipcMain.handle('save-config', async (_event, newConfig: AppConfig) => {
   saveConfig(newConfig);
