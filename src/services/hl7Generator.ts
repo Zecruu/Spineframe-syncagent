@@ -100,11 +100,11 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
     'PV1',
     '1',
     'O',                    // PV1.2 - Patient Class (O = Outpatient)
-    billingNPI,             // PV1.3 - Assigned Patient Location (Billing Provider NPI)
+    '',                     // PV1.3 - Assigned Patient Location
     '',                     // PV1.4
     '',                     // PV1.5
     attendingDoctor,        // PV1.7 - Attending Doctor (NPI^Name)
-    '',                     // PV1.8 - Referring Doctor
+    attendingDoctor,        // PV1.8 - Referring Doctor (NPI^Name)
     '',                     // PV1.9
     '',                     // PV1.10
     '',                     // PV1.11
@@ -183,13 +183,8 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
       clinic.code,                                    // FT1.16 - Assigned Patient Location
       '',                                             // FT1.17 - Fee Schedule
       '',                                             // FT1.18 - Patient Type
-      '',                                             // FT1.19 - Diagnosis Code FT1
-      performedBy,                                    // FT1.20 - Performed By Code (Rendering Provider NPI^Name)
-      '',                                             // FT1.21 - Ordered By Code
-      '',                                             // FT1.22 - Unit Cost
-      '',                                             // FT1.23 - Filler Order Number
-      '',                                             // FT1.24 - Entered By Code
-      diagCodes                                       // FT1.25 - Procedure Code (Diagnosis Codes)
+      diagCodes,                                      // FT1.19 - Diagnosis Code FT1
+      performedBy                                     // FT1.20 - Performed By Code (Rendering Provider NPI^Name)
     ].join(HL7_FIELD_SEPARATOR));
   });
 

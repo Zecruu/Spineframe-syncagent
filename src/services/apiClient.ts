@@ -19,7 +19,7 @@ import { AppConfig } from '../models/config';
 import { getLogger, maskApiKey } from './logger';
 
 const logger = getLogger('APIClient');
-const AGENT_VERSION = '1.0.11';
+const AGENT_VERSION = '1.0.12';
 
 export class SpineFrameApiClient {
   private client: AxiosInstance;
