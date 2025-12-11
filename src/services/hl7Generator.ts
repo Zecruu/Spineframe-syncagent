@@ -76,7 +76,7 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
     'PID',
     '1',                                              // PID.1 - Set ID
     patientRecordNumber,                              // PID.2 - Patient External ID (Record Number)
-    `${claim.patient.proclaimPatientRecord || claim.patient.id}^^^PROCLAIM`, // PID.3 - Patient ID List
+    patientRecordNumber,                              // PID.3 - Patient ID List (Record Number)
     '',                                               // PID.4 - Alternate Patient ID
     patientName,                                      // PID.5 - Patient Name
     '',                                               // PID.6 - Mother's Maiden Name
