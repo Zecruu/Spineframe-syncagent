@@ -147,6 +147,7 @@ export interface ExportPatientInfo {
     state: string;
     zipCode: string;
   };
+  recordNumber?: string;
   proclaimPatientRecord?: string;
   proclaimInternalControl?: string;
   insurance?: Array<{

@@ -70,22 +70,23 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
   const patientName = `${(claim.patient.lastName || '').toUpperCase()}^${(claim.patient.firstName || '').toUpperCase()}^${(claim.patient.middleName || '').toUpperCase()}`;
   const patientAddress = formatAddress(claim.patient.address);
   const sex = claim.patient.sex === 'Female' ? 'F' : claim.patient.sex === 'Male' ? 'M' : 'U';
-  
+  const patientRecordNumber = claim.patient.recordNumber || '';
+
   segments.push([
     'PID',
-    '1',
-    '',
-    `${claim.patient.proclaimPatientRecord || claim.patient.id}^^^PROCLAIM`,
-    '',
-    patientName,
-    '',
-    dobFormatted,
-    sex,
-    '',
-    '',
-    patientAddress,
-    '',
-    claim.patient.phone || ''
+    '1',                                              // PID.1 - Set ID
+    patientRecordNumber,                              // PID.2 - Patient External ID (Record Number)
+    `${claim.patient.proclaimPatientRecord || claim.patient.id}^^^PROCLAIM`, // PID.3 - Patient ID List
+    '',                                               // PID.4 - Alternate Patient ID
+    patientName,                                      // PID.5 - Patient Name
+    '',                                               // PID.6 - Mother's Maiden Name
+    dobFormatted,                                     // PID.7 - Date of Birth
+    sex,                                              // PID.8 - Sex
+    '',                                               // PID.9 - Patient Alias
+    '',                                               // PID.10 - Race
+    patientAddress,                                   // PID.11 - Patient Address
+    '',                                               // PID.12 - County Code
+    claim.patient.phone || ''                         // PID.13 - Phone Number - Home
   ].join(HL7_FIELD_SEPARATOR));
 
   // PV1 - Patient Visit
