@@ -158,11 +158,15 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
   ].join(HL7_FIELD_SEPARATOR));
 
   // FT1 - Financial Transaction (one per billing code)
-  const diagCodes = claim.diagnosisCodes.join(HL7_REPETITION_SEPARATOR);
+  // Format diagnosis codes as {code}^^ICD~{code2}^^ICD per HL7 2.4
+  const diagCodesFormatted = claim.diagnosisCodes
+    .map(code => `${code}${HL7_COMPONENT_SEPARATOR}${HL7_COMPONENT_SEPARATOR}ICD`)
+    .join(HL7_REPETITION_SEPARATOR);
   const performedBy = renderingNPI ? `${renderingNPI}${HL7_COMPONENT_SEPARATOR}${renderingName}` : '';
 
   claim.billingCodes.forEach((code, index) => {
-    const modifierStr = code.modifiers.length > 0 ? `:${code.modifiers.join(':')}` : '';
+    const procedureCode = `${code.code}${HL7_COMPONENT_SEPARATOR}${code.description.toUpperCase()}`;
+    const modifiers = code.modifiers.length > 0 ? code.modifiers.join(HL7_REPETITION_SEPARATOR) : '';
     segments.push([
       'FT1',
       String(index + 1),                              // FT1.1 - Set ID
@@ -171,7 +175,7 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
       dosFormatted,                                   // FT1.4 - Transaction Date
       dosFormatted,                                   // FT1.5 - Transaction Posting Date
       'CG',                                           // FT1.6 - Transaction Type (CG = Charge)
-      `${code.code}${modifierStr}${HL7_COMPONENT_SEPARATOR}${code.description.toUpperCase()}`, // FT1.7 - Transaction Code
+      '',                                             // FT1.7 - Transaction Code (empty, using FT1.25)
       '',                                             // FT1.8 - Transaction Description
       '',                                             // FT1.9 - Transaction Description Alt
       String(code.quantity),                          // FT1.10 - Transaction Quantity
@@ -183,8 +187,14 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
       clinic.code,                                    // FT1.16 - Assigned Patient Location
       '',                                             // FT1.17 - Fee Schedule
       '',                                             // FT1.18 - Patient Type
-      diagCodes,                                      // FT1.19 - Diagnosis Code FT1
-      performedBy                                     // FT1.20 - Performed By Code (Rendering Provider NPI^Name)
+      diagCodesFormatted,                             // FT1.19 - Diagnosis Codes ({code}^^ICD~{code2}^^ICD)
+      performedBy,                                    // FT1.20 - Performed By Code (NPI^Name)
+      '',                                             // FT1.21 - Ordered By Code
+      '',                                             // FT1.22 - Unit Cost
+      '',                                             // FT1.23 - Filler Order Number
+      '',                                             // FT1.24 - Entered By Code
+      procedureCode,                                  // FT1.25 - Procedure Code (CPT^Description)
+      modifiers                                       // FT1.26 - Procedure Code Modifiers
     ].join(HL7_FIELD_SEPARATOR));
   });
 
