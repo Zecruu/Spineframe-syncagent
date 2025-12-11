@@ -90,24 +90,31 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
 
   // PV1 - Patient Visit
   const visitId = `VIS${claim.claimId.substring(0, 10).toUpperCase()}`;
+  const billingNPI = claim.billingProvider?.npi || clinic.npi || '';
+  const renderingNPI = claim.renderingProvider?.npi || '';
+  const renderingName = claim.renderingProvider?.name || '';
+  const attendingDoctor = renderingNPI ? `${renderingNPI}${HL7_COMPONENT_SEPARATOR}${renderingName}` : '';
+
   segments.push([
     'PV1',
     '1',
-    'O',
-    clinic.code,
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    visitId
+    'O',                    // PV1.2 - Patient Class (O = Outpatient)
+    billingNPI,             // PV1.3 - Assigned Patient Location (Billing Provider NPI)
+    '',                     // PV1.4
+    '',                     // PV1.5
+    attendingDoctor,        // PV1.7 - Attending Doctor (NPI^Name)
+    '',                     // PV1.8 - Referring Doctor
+    '',                     // PV1.9
+    '',                     // PV1.10
+    '',                     // PV1.11
+    '',                     // PV1.12
+    '',                     // PV1.13
+    '',                     // PV1.14
+    '',                     // PV1.15
+    '',                     // PV1.16
+    '',                     // PV1.17
+    '',                     // PV1.18
+    visitId                 // PV1.19 - Visit Number
   ].join(HL7_FIELD_SEPARATOR));
 
   // IN1 - Insurance
@@ -151,23 +158,37 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
 
   // FT1 - Financial Transaction (one per billing code)
   const diagCodes = claim.diagnosisCodes.join(HL7_REPETITION_SEPARATOR);
+  const performedBy = renderingNPI ? `${renderingNPI}${HL7_COMPONENT_SEPARATOR}${renderingName}` : '';
+
   claim.billingCodes.forEach((code, index) => {
     const modifierStr = code.modifiers.length > 0 ? `:${code.modifiers.join(':')}` : '';
     segments.push([
       'FT1',
-      String(index + 1),
-      claim.claimId.substring(0, 20),
-      '',
-      dosFormatted,
-      dosFormatted,
-      'CG',
-      `${code.code}${modifierStr}^${code.description.toUpperCase()}`,
-      '',
-      '',
-      String(code.quantity),
-      String(code.chargeAmount.toFixed(2)),
-      '', '', '', '', '', '', '', '', '', '',
-      diagCodes
+      String(index + 1),                              // FT1.1 - Set ID
+      claim.claimId.substring(0, 20),                 // FT1.2 - Transaction ID
+      '',                                             // FT1.3 - Transaction Batch ID
+      dosFormatted,                                   // FT1.4 - Transaction Date
+      dosFormatted,                                   // FT1.5 - Transaction Posting Date
+      'CG',                                           // FT1.6 - Transaction Type (CG = Charge)
+      `${code.code}${modifierStr}${HL7_COMPONENT_SEPARATOR}${code.description.toUpperCase()}`, // FT1.7 - Transaction Code
+      '',                                             // FT1.8 - Transaction Description
+      '',                                             // FT1.9 - Transaction Description Alt
+      String(code.quantity),                          // FT1.10 - Transaction Quantity
+      String(code.chargeAmount.toFixed(2)),           // FT1.11 - Transaction Amount Extended
+      '',                                             // FT1.12 - Transaction Amount Unit
+      '',                                             // FT1.13 - Department Code
+      '',                                             // FT1.14 - Insurance Plan ID
+      '',                                             // FT1.15 - Insurance Amount
+      clinic.code,                                    // FT1.16 - Assigned Patient Location
+      '',                                             // FT1.17 - Fee Schedule
+      '',                                             // FT1.18 - Patient Type
+      '',                                             // FT1.19 - Diagnosis Code FT1
+      performedBy,                                    // FT1.20 - Performed By Code (Rendering Provider NPI^Name)
+      '',                                             // FT1.21 - Ordered By Code
+      '',                                             // FT1.22 - Unit Cost
+      '',                                             // FT1.23 - Filler Order Number
+      '',                                             // FT1.24 - Entered By Code
+      diagCodes                                       // FT1.25 - Procedure Code (Diagnosis Codes)
     ].join(HL7_FIELD_SEPARATOR));
   });
 

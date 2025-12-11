@@ -174,6 +174,19 @@ export interface ExportBillingCode {
 export interface ExportRenderingProvider {
   name: string;
   npi: string;
+  taxId?: string;
+}
+
+export interface ExportBillingProvider {
+  name: string;
+  npi: string;
+  taxId?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
 }
 
 export interface ExportClaim {
@@ -187,6 +200,7 @@ export interface ExportClaim {
   totalChargeAmount: number;
   copay?: number;
   renderingProvider: ExportRenderingProvider;
+  billingProvider: ExportBillingProvider;
   placeOfService: string;
 }
 
