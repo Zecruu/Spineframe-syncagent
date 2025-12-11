@@ -19,7 +19,7 @@ import { AppConfig } from '../models/config';
 import { getLogger, maskApiKey } from './logger';
 
 const logger = getLogger('APIClient');
-const AGENT_VERSION = '1.0.0';
+const AGENT_VERSION = '1.0.8';
 
 export class SpineFrameApiClient {
   private client: AxiosInstance;
@@ -63,9 +63,40 @@ export class SpineFrameApiClient {
 
   updateConfig(config: AppConfig): void {
     this.config = config;
-    this.client.defaults.baseURL = config.api.baseUrl;
-    this.client.defaults.headers.common['Authorization'] = `Bearer ${config.api.apiKey}`;
-    this.client.defaults.headers.common['X-Clinic-Id'] = config.api.clinicId;
+
+    // Recreate the axios client with new config to ensure headers are fresh
+    this.client = axios.create({
+      baseURL: config.api.baseUrl,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.api.apiKey}`,
+        'X-Clinic-Id': config.api.clinicId,
+        'X-Agent-Version': AGENT_VERSION,
+        'X-Agent-Hostname': os.hostname(),
+      },
+    });
+
+    // Re-add interceptors
+    this.client.interceptors.request.use((request) => {
+      logger.debug(`API Request: ${request.method?.toUpperCase()} ${request.url}`);
+      return request;
+    });
+
+    this.client.interceptors.response.use(
+      (response) => {
+        logger.debug(`API Response: ${response.status} ${response.statusText}`);
+        return response;
+      },
+      (error: AxiosError) => {
+        const status = error.response?.status || 'N/A';
+        const data = error.response?.data as ApiErrorResponse | undefined;
+        logger.error(`API Error: ${status} - ${data?.error || error.message}`);
+        return Promise.reject(error);
+      }
+    );
+
+    logger.info(`API Client config updated - ${maskApiKey(config.api.apiKey)}`);
   }
 
   setLastSyncAt(dateTime: string): void {
@@ -95,6 +126,9 @@ export class SpineFrameApiClient {
       pendingFiles,
       lastSyncAt: this.lastSyncAt,
     };
+
+    // Debug: Log which API key is being used
+    logger.debug(`Heartbeat using API key: ${maskApiKey(this.config.api.apiKey)}`);
 
     const response = await this.client.post<HeartbeatResponse>('/api/hl7/agent-heartbeat', request);
     logger.info(`Heartbeat sent - ${response.data.message}`);
