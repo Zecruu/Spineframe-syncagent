@@ -5,6 +5,7 @@ import { initializeLogger, getLogger } from '../services/logger';
 import { loadConfig, saveConfig, configExists, getConfigDir } from '../services/configManager';
 import { initializeApiClient, getApiClient, SpineFrameApiClient } from '../services/apiClient';
 import { SyncService, SyncStats, SyncActivityItem } from '../services/syncService';
+import { ExportService, ExportStats } from '../services/exportService';
 import { TrayManager } from './tray';
 import { AppConfig, DEFAULT_CONFIG } from '../models/config';
 import { setAutoStart, getAutoStartEnabled } from '../services/autoStart';
@@ -15,6 +16,7 @@ let settingsWindow: BrowserWindow | null = null;
 let wizardWindow: BrowserWindow | null = null;
 let trayManager: TrayManager | null = null;
 let syncService: SyncService | null = null;
+let exportService: ExportService | null = null;
 let config: AppConfig;
 let logger: ReturnType<typeof getLogger>;
 
@@ -189,6 +191,20 @@ async function initializeApp(): Promise<void> {
     trayManager.setStatus('error');
   }
 
+  // Start export service (if enabled)
+  if (config.export?.enabled) {
+    try {
+      const apiClient = getApiClient();
+      if (apiClient) {
+        exportService = new ExportService(config, apiClient);
+        await exportService.start();
+        logger.info('Export service started');
+      }
+    } catch (error) {
+      logger.error(`Failed to start export service: ${error}`);
+    }
+  }
+
   // Initialize auto-updater (only in production)
   if (!isDev) {
     initializeAutoUpdater();
@@ -250,6 +266,7 @@ ipcMain.handle('save-config', async (_event, newConfig: AppConfig) => {
   const apiClient = getApiClient();
   apiClient?.updateConfig(config);
   syncService?.updateConfig(config, apiClient ?? undefined);
+  exportService?.updateConfig(config, apiClient ?? undefined);
 
   // Update auto-start setting
   setAutoStart(newConfig.behavior?.autoStart ?? false);
@@ -352,6 +369,11 @@ ipcMain.handle('uninstall-app', async () => {
   }
 });
 
+// Export stats handler
+ipcMain.handle('get-export-stats', () => {
+  return exportService?.getStats() || { exportedToday: 0, lastExportAt: null, errorsToday: 0 };
+});
+
 ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
   saveConfig(newConfig);
   config = newConfig;
@@ -409,6 +431,17 @@ ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
   } catch (error) {
     logger.error(`Failed to start sync service: ${error}`);
     trayManager.setStatus('error');
+  }
+
+  // Start export service if enabled
+  if (config.export?.enabled && config.export?.outputFolder) {
+    try {
+      exportService = new ExportService(config, apiClient);
+      await exportService.start();
+      logger.info('Export service started');
+    } catch (error) {
+      logger.error(`Failed to start export service: ${error}`);
+    }
   }
 });
 

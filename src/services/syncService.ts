@@ -3,6 +3,7 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import { FileWatcherService, FileEvent } from './fileWatcher';
 import { SpineFrameApiClient } from './apiClient';
+import { parseHL7, parsePatientFromADT, parseEncounterFromDFT, parseNoteFromORU, splitHL7Batch } from './hl7Parser';
 import { AppConfig } from '../models/config';
 import { getLogger } from './logger';
 
@@ -45,19 +46,15 @@ export class SyncService extends EventEmitter {
 
   async start(): Promise<void> {
     if (!this.config.folders.watch) {
-      throw new Error('Google Drive folder not configured');
+      throw new Error('Watch folder not configured');
     }
 
-    if (!this.config.folders.proclaim) {
-      throw new Error('ProClaim folder not configured');
-    }
-
-    // Ensure output folders exist
+    // Ensure processed/failed folders exist
     this.ensureFoldersExist();
 
-    // Initialize file watcher on Google Drive folder
+    // Initialize file watcher
     this.fileWatcher = new FileWatcherService(this.config.folders.watch);
-
+    
     this.fileWatcher.on('file-processing', (event: FileEvent) => {
       this.processFile(event);
     });
@@ -72,10 +69,10 @@ export class SyncService extends EventEmitter {
 
     await this.fileWatcher.start();
 
-    // Start heartbeat to SpineFrame API
+    // Start heartbeat
     this.startHeartbeat();
 
-    logger.info('Sync service started - watching Google Drive folder');
+    logger.info('Sync service started');
     this.emit('started');
   }
 
@@ -112,7 +109,6 @@ export class SyncService extends EventEmitter {
 
   private ensureFoldersExist(): void {
     const folders = [
-      this.config.folders.proclaim,
       this.config.folders.processed,
       this.config.folders.failed,
     ];
@@ -127,7 +123,7 @@ export class SyncService extends EventEmitter {
 
   private startHeartbeat(): void {
     const intervalMs = this.config.behavior.syncIntervalSeconds * 1000;
-
+    
     // Send initial heartbeat
     this.sendHeartbeat();
 
@@ -154,22 +150,26 @@ export class SyncService extends EventEmitter {
     }
 
     this.emit('status', 'syncing');
-    logger.info(`Copying file to ProClaim: ${event.fileName}`);
+    logger.info(`Processing file: ${event.fileName}`);
 
     try {
-      // Copy file from Google Drive folder to ProClaim folder
-      await this.copyFileToProClaim(event.filePath, event.fileName);
+      const content = fs.readFileSync(event.filePath, 'utf-8');
+      const messages = splitHL7Batch(content);
 
-      // Success - handle file disposition (move to processed or delete)
+      for (const msgContent of messages) {
+        await this.processHL7Message(msgContent, event.fileName);
+      }
+
+      // Success - handle file disposition
       await this.handleSuccessfulFile(event.filePath);
-
+      
       this.stats.syncedToday++;
       this.stats.lastSyncAt = new Date();
       this.apiClient.setLastSyncAt(this.stats.lastSyncAt.toISOString());
-
-      this.addActivity('success', `Copied to ProClaim folder`, event.fileName);
+      
+      this.addActivity('success', `File processed successfully`, event.fileName);
       this.emit('file-synced', event);
-
+      
     } catch (error) {
       await this.handleFailedFile(event.filePath, error as Error);
     } finally {
@@ -178,23 +178,46 @@ export class SyncService extends EventEmitter {
     }
   }
 
-  private async copyFileToProClaim(sourcePath: string, fileName: string): Promise<void> {
-    const destPath = path.join(this.config.folders.proclaim!, fileName);
+  private async processHL7Message(content: string, fileName: string): Promise<void> {
+    const message = parseHL7(content);
+    logger.info(`Processing ${message.messageType} message from ${fileName}`);
 
-    // Check if file already exists in destination
-    if (fs.existsSync(destPath)) {
-      // Add timestamp to avoid overwriting
-      const timestamp = Date.now();
-      const ext = path.extname(fileName);
-      const baseName = path.basename(fileName, ext);
-      const newFileName = `${baseName}_${timestamp}${ext}`;
-      const newDestPath = path.join(this.config.folders.proclaim!, newFileName);
-
-      fs.copyFileSync(sourcePath, newDestPath);
-      logger.info(`Copied file (renamed): ${fileName} -> ${newFileName}`);
-    } else {
-      fs.copyFileSync(sourcePath, destPath);
-      logger.info(`Copied file: ${fileName} -> ProClaim folder`);
+    switch (message.messageType) {
+      case 'ADT^A04':
+      case 'ADT^A08':
+      case 'ADT^A31': {
+        const patient = parsePatientFromADT(message);
+        if (patient) {
+          await this.apiClient.upsertPatient({
+            externalSystem: 'ProClaim',
+            ...patient,
+          });
+        }
+        break;
+      }
+      case 'DFT^P03': {
+        const encounter = parseEncounterFromDFT(message);
+        if (encounter) {
+          await this.apiClient.createEncounterCharge({
+            externalSystem: 'ProClaim',
+            ...encounter,
+          });
+        }
+        break;
+      }
+      case 'ORU^R01': {
+        const note = parseNoteFromORU(message);
+        if (note) {
+          await this.apiClient.createNote({
+            externalSystem: 'ProClaim',
+            ...note,
+          });
+        }
+        break;
+      }
+      default:
+        logger.warn(`Unknown message type: ${message.messageType}, skipping`);
+        this.addActivity('info', `Skipped unknown message type: ${message.messageType}`, fileName);
     }
   }
 

@@ -51,36 +51,23 @@
       <div class="connection-status" id="connectionStatus"></div>
     </section>
 
-    <!-- Step 2: Folder Configuration -->
+    <!-- Step 2: Watch Folder -->
     <section class="wizard-step hidden" id="step2">
-      <h2>Folder Configuration</h2>
-      <p class="step-description">📂 File Flow: Google Drive → Sync Agent → ProClaim</p>
-
+      <h2>Watch Folder Configuration</h2>
+      <p class="step-description">Select the folder where ProClaim exports HL7 files</p>
       <div class="form-group">
-        <label for="watchFolder">📥 Google Drive Folder (Input)</label>
+        <label for="watchFolder">Watch Folder Path</label>
         <div class="input-with-button">
-          <input type="text" id="watchFolder" placeholder="C:\Users\You\Google Drive\SpineFrame\HL7Export" readonly>
+          <input type="text" id="watchFolder" placeholder="C:\ProClaim\HL7Export" readonly>
           <button type="button" class="btn-browse" id="browseWatchFolder">📁 Browse</button>
         </div>
-        <small class="field-hint">SpineFrame exports HL7 files to Google Drive. Point this to your local Google Drive sync folder.</small>
       </div>
-
       <div class="form-group">
-        <label for="proclaimFolder">📤 ProClaim Import Folder (Output)</label>
+        <label for="processedFolder">Processed Files Folder (optional)</label>
         <div class="input-with-button">
-          <input type="text" id="proclaimFolder" placeholder="C:\ProClaim\Import" readonly>
-          <button type="button" class="btn-browse" id="browseProClaimFolder">📁 Browse</button>
-        </div>
-        <small class="field-hint">Sync Agent copies HL7 files here. ProClaim should watch this folder for incoming files.</small>
-      </div>
-
-      <div class="form-group">
-        <label for="processedFolder">📋 Processed Folder (Optional)</label>
-        <div class="input-with-button">
-          <input type="text" id="processedFolder" placeholder="C:\SpineFrame\Processed" readonly>
+          <input type="text" id="processedFolder" placeholder="C:\ProClaim\HL7Export\Processed" readonly>
           <button type="button" class="btn-browse" id="browseProcessedFolder">📁 Browse</button>
         </div>
-        <small class="field-hint">After copying to ProClaim, move original files here for record-keeping.</small>
       </div>
     </section>
 
