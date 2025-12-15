@@ -30,7 +30,7 @@ export function configExists(): boolean {
 
 export function loadConfig(): AppConfig {
   initializeConfigManager();
-  
+
   if (!fs.existsSync(configPath)) {
     logger.info('No config file found, using defaults');
     return { ...DEFAULT_CONFIG };
@@ -39,22 +39,30 @@ export function loadConfig(): AppConfig {
   try {
     const rawConfig = fs.readFileSync(configPath, 'utf-8');
     const config = JSON.parse(rawConfig) as AppConfig;
-    
+
     // Decrypt API key if encrypted
     if (config.api.apiKey && config.api.apiKey.startsWith('encrypted:')) {
       const encryptedBase64 = config.api.apiKey.replace('encrypted:', '');
       const encryptedBuffer = Buffer.from(encryptedBase64, 'base64');
-      
-      if (safeStorage.isEncryptionAvailable()) {
-        config.api.apiKey = safeStorage.decryptString(encryptedBuffer);
-      } else {
-        logger.warn('Encryption not available, API key stored in plain text');
-        config.api.apiKey = encryptedBase64;
+
+      try {
+        if (safeStorage.isEncryptionAvailable()) {
+          config.api.apiKey = safeStorage.decryptString(encryptedBuffer);
+          logger.info('API key decrypted successfully');
+        } else {
+          // Encryption not available - this is a problem, key cannot be decrypted
+          logger.error('Encryption not available - cannot decrypt API key. Please reconfigure the API key.');
+          config.api.apiKey = '';
+        }
+      } catch (decryptError) {
+        // Decryption failed - this can happen after system changes
+        logger.error(`Failed to decrypt API key: ${decryptError}. Please reconfigure the API key.`);
+        config.api.apiKey = '';
       }
     }
 
     currentConfig = config;
-    logger.info('Config loaded successfully');
+    logger.info(`Config loaded successfully. API Key present: ${!!config.api.apiKey && config.api.apiKey.length > 0}`);
     return config;
   } catch (error) {
     logger.error(`Failed to load config: ${error}`);

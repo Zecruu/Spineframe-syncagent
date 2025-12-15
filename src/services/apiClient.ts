@@ -118,6 +118,12 @@ export class SpineFrameApiClient {
   }
 
   async sendHeartbeat(pendingFiles: number): Promise<HeartbeatResponse> {
+    // Check if API key is present
+    if (!this.config.api.apiKey || this.config.api.apiKey.length === 0) {
+      logger.error('Heartbeat failed: No API key configured. Please reconfigure credentials in Settings.');
+      throw new Error('No API key configured');
+    }
+
     const request: HeartbeatRequest = {
       agentVersion: AGENT_VERSION,
       hostname: os.hostname(),

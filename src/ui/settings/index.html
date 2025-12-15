@@ -16,7 +16,6 @@
     <div class="tabs">
       <button class="tab active" data-tab="connection">Connection</button>
       <button class="tab" data-tab="folders">Folders</button>
-      <button class="tab" data-tab="export">Export</button>
       <button class="tab" data-tab="behavior">Behavior</button>
       <button class="tab" data-tab="logs">Logs</button>
       <button class="tab" data-tab="about">About</button>
@@ -45,35 +44,26 @@
 
     <!-- Folders Tab -->
     <section class="tab-content" id="folders">
+      <div class="folder-flow-info">
+        <p>📂 <strong>File Flow:</strong> ProClaim → Watch Folder → Sync Agent → SpineFrame Cloud</p>
+        <p>📤 <strong>Export Flow:</strong> SpineFrame Cloud → Sync Agent → Export Folder → ProClaim</p>
+      </div>
+
+      <h3>📥 Import (ProClaim → SpineFrame)</h3>
       <div class="form-group">
         <label for="watchFolder">Watch Folder</label>
         <div class="input-with-button">
           <input type="text" id="watchFolder" readonly>
           <button type="button" id="browseWatch">📁</button>
         </div>
+        <small class="field-hint">ProClaim exports HL7 files here. Sync Agent monitors this folder and uploads to SpineFrame.</small>
       </div>
-      <div class="form-group">
-        <label for="processedFolder">Processed Folder</label>
-        <div class="input-with-button">
-          <input type="text" id="processedFolder" readonly>
-          <button type="button" id="browseProcessed">📁</button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="failedFolder">Failed Folder</label>
-        <div class="input-with-button">
-          <input type="text" id="failedFolder" readonly>
-          <button type="button" id="browseFailed">📁</button>
-        </div>
-      </div>
-    </section>
 
-    <!-- Export Tab -->
-    <section class="tab-content" id="export">
+      <h3>📤 Export (SpineFrame → ProClaim)</h3>
       <div class="form-group checkbox-group">
         <label class="checkbox-option">
           <input type="checkbox" id="exportEnabled">
-          <span>Enable Export (SpineFrame → ProClaim)</span>
+          <span>Enable Export</span>
         </label>
       </div>
       <div class="form-group">
@@ -82,25 +72,25 @@
           <input type="text" id="exportFolder" readonly>
           <button type="button" id="browseExport">📁</button>
         </div>
-        <small class="field-hint">ProClaim will import HL7 files from this folder</small>
+        <small class="field-hint">Sync Agent generates HL7 files here from SpineFrame claims. ProClaim should import from this folder.</small>
+      </div>
+
+      <h3>📋 File Management</h3>
+      <div class="form-group">
+        <label for="processedFolder">Processed Folder</label>
+        <div class="input-with-button">
+          <input type="text" id="processedFolder" readonly>
+          <button type="button" id="browseProcessed">📁</button>
+        </div>
+        <small class="field-hint">After successful sync, files are moved here for record-keeping.</small>
       </div>
       <div class="form-group">
-        <label for="exportInterval">Poll Interval (seconds)</label>
-        <input type="number" id="exportInterval" min="10" max="300" value="30">
-        <small class="field-hint">How often to check SpineFrame for pending exports</small>
-      </div>
-      <div class="form-group">
-        <label for="exportFormat">Export Format</label>
-        <select id="exportFormat">
-          <option value="hl7">HL7 v2.4</option>
-          <option value="x12">X12 837P</option>
-          <option value="csv">CSV</option>
-          <option value="json">JSON</option>
-        </select>
-      </div>
-      <div class="export-info">
-        <p>📤 <strong>Export Flow:</strong> SpineFrame → Sync Agent → ProClaim Import Folder</p>
-        <p>Claims created in SpineFrame will be automatically exported as HL7 DFT^P03 messages.</p>
+        <label for="failedFolder">Failed Folder</label>
+        <div class="input-with-button">
+          <input type="text" id="failedFolder" readonly>
+          <button type="button" id="browseFailed">📁</button>
+        </div>
+        <small class="field-hint">Files that fail to sync are moved here for troubleshooting.</small>
       </div>
     </section>
 

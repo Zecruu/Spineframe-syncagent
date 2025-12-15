@@ -253,6 +253,17 @@ function setupSyncServiceListeners(): void {
   syncService.on('heartbeat-failed', () => {
     trayManager?.setStatus('error');
   });
+
+  syncService.on('credentials-invalid', () => {
+    trayManager?.setStatus('error');
+    // Show notification about invalid credentials
+    new Notification({
+      title: 'SpineFrame Sync Agent',
+      body: 'Invalid API credentials. Please reconfigure in Settings.',
+      icon: path.join(__dirname, '../../assets/icons/icon.png'),
+    }).show();
+    mainWindow?.webContents.send('credentials-invalid');
+  });
 }
 
 // IPC Handlers

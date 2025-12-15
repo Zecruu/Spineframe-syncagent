@@ -137,9 +137,20 @@ export class SyncService extends EventEmitter {
       const pendingCount = this.fileWatcher?.getPendingCount() || 0;
       await this.apiClient.sendHeartbeat(pendingCount);
       this.emit('heartbeat-sent');
-    } catch (error) {
-      logger.error(`Heartbeat failed: ${error}`);
-      this.emit('heartbeat-failed', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`Heartbeat failed: ${errorMessage}`);
+
+      // Check for specific error types
+      if (errorMessage.includes('No API key configured')) {
+        this.addActivity('error', 'No API key configured. Please reconfigure in Settings.');
+        this.emit('credentials-invalid', error);
+      } else if (errorMessage.includes('401') || errorMessage.includes('Invalid')) {
+        this.addActivity('error', 'Invalid API credentials. Please reconfigure in Settings.');
+        this.emit('credentials-invalid', error);
+      } else {
+        this.emit('heartbeat-failed', error);
+      }
     }
   }
 
