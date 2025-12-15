@@ -38,8 +38,6 @@ const failedFolder = document.getElementById('failedFolder');
 // Export
 const exportEnabled = document.getElementById('exportEnabled');
 const exportFolder = document.getElementById('exportFolder');
-const exportInterval = document.getElementById('exportInterval');
-const exportFormat = document.getElementById('exportFormat');
 
 const autoStart = document.getElementById('autoStart');
 const moveToProcessed = document.getElementById('moveToProcessed');
@@ -81,8 +79,6 @@ async function loadConfig() {
   // Export
   exportEnabled.checked = config.export?.enabled ?? false;
   exportFolder.value = config.export?.outputFolder || '';
-  exportInterval.value = config.export?.pollIntervalSeconds || 30;
-  exportFormat.value = config.export?.format || 'hl7';
 }
 
 // Save config
@@ -116,8 +112,8 @@ async function saveConfig() {
     export: {
       enabled: exportEnabled.checked,
       outputFolder: exportFolder.value,
-      pollIntervalSeconds: parseInt(exportInterval.value, 10),
-      format: exportFormat.value,
+      pollIntervalSeconds: 30,
+      format: 'hl7',
       fileNamePattern: 'DFT_{clinicCode}_{timestamp}.hl7',
     },
   };

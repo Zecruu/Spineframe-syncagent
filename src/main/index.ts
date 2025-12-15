@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell, Notification } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { execSync } from 'child_process';
 import { initializeLogger, getLogger } from '../services/logger';
 import { loadConfig, saveConfig, configExists, getConfigDir } from '../services/configManager';
@@ -358,6 +359,13 @@ ipcMain.handle('get-update-status', () => {
 // Uninstall handler
 ipcMain.handle('uninstall-app', async () => {
   try {
+    // Clean up config directory (contains config.json and logs)
+    const configDir = getConfigDir();
+    if (fs.existsSync(configDir)) {
+      fs.rmSync(configDir, { recursive: true, force: true });
+      logger.info(`Cleaned up config directory: ${configDir}`);
+    }
+
     // Get the uninstaller path from the app's installation directory
     const appPath = app.getPath('exe');
     const appDir = path.dirname(appPath);
