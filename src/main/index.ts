@@ -278,12 +278,32 @@ ipcMain.handle('get-config', () => config);
 ipcMain.handle('save-config', async (_event, newConfig: AppConfig) => {
   saveConfig(newConfig);
   config = newConfig;
+  logger.info(`Config saved. Export enabled: ${config.export?.enabled}, Export folder: ${config.export?.outputFolder || 'NOT SET'}`);
 
   // Update all services with new config and API client
   const apiClient = getApiClient();
   apiClient?.updateConfig(config);
   syncService?.updateConfig(config, apiClient ?? undefined);
-  exportService?.updateConfig(config, apiClient ?? undefined);
+
+  // Handle export service - start/stop/update based on config
+  if (config.export?.enabled && config.export?.outputFolder) {
+    if (exportService) {
+      // Update existing service
+      exportService.updateConfig(config, apiClient ?? undefined);
+      logger.info('Export service config updated');
+    } else if (apiClient) {
+      // Start new export service
+      logger.info('Starting export service (was not running)...');
+      exportService = new ExportService(config, apiClient);
+      await exportService.start();
+      logger.info('Export service started after config save');
+    }
+  } else if (exportService) {
+    // Stop export service if disabled
+    logger.info('Stopping export service (disabled in config)');
+    await exportService.stop();
+    exportService = null;
+  }
 
   // Update auto-start setting
   setAutoStart(newConfig.behavior?.autoStart ?? false);
