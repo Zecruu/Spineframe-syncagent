@@ -21,8 +21,10 @@ const connectionStatus = document.getElementById('connectionStatus');
 
 // Step 2 elements
 const watchFolder = document.getElementById('watchFolder');
+const proclaimFolder = document.getElementById('proclaimFolder');
 const processedFolder = document.getElementById('processedFolder');
 const browseWatchFolder = document.getElementById('browseWatchFolder');
+const browseProClaimFolder = document.getElementById('browseProClaimFolder');
 const browseProcessedFolder = document.getElementById('browseProcessedFolder');
 
 // Step 3 elements
@@ -54,7 +56,7 @@ function validateCurrentStep() {
     case 1:
       return apiUrl.value && clinicId.value && apiKey.value;
     case 2:
-      return watchFolder.value;
+      return watchFolder.value && proclaimFolder.value;
     case 3:
       return true;
     default:
@@ -118,10 +120,13 @@ browseWatchFolder.addEventListener('click', async () => {
   const folder = await ipcRenderer.invoke('select-folder');
   if (folder) {
     watchFolder.value = folder;
-    // Auto-set processed folder
-    if (!processedFolder.value) {
-      processedFolder.value = path.join(folder, 'Processed');
-    }
+  }
+});
+
+browseProClaimFolder.addEventListener('click', async () => {
+  const folder = await ipcRenderer.invoke('select-folder');
+  if (folder) {
+    proclaimFolder.value = folder;
   }
 });
 
@@ -145,8 +150,9 @@ async function completeSetup() {
     },
     folders: {
       watch: watchFolder.value,
-      processed: processedFolder.value || path.join(watchFolder.value, 'Processed'),
-      failed: path.join(watchFolder.value, 'Failed'),
+      proclaim: proclaimFolder.value,
+      processed: processedFolder.value || '',
+      failed: '',
     },
     behavior: {
       autoStart: autoStart.checked,

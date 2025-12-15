@@ -76,7 +76,6 @@ export function saveConfig(config: AppConfig): void {
       folders: { ...config.folders },
       behavior: { ...config.behavior },
       logging: { ...config.logging },
-      export: { ...config.export },
     };
 
     // Encrypt API key for storage

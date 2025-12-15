@@ -31,15 +31,11 @@ const toggleApiKey = document.getElementById('toggleApiKey');
 const testConnection = document.getElementById('testConnection');
 const connectionStatus = document.getElementById('connectionStatus');
 
+// Folders
 const watchFolder = document.getElementById('watchFolder');
+const proclaimFolder = document.getElementById('proclaimFolder');
 const processedFolder = document.getElementById('processedFolder');
 const failedFolder = document.getElementById('failedFolder');
-
-// Export
-const exportEnabled = document.getElementById('exportEnabled');
-const exportFolder = document.getElementById('exportFolder');
-const exportInterval = document.getElementById('exportInterval');
-const exportFormat = document.getElementById('exportFormat');
 
 const autoStart = document.getElementById('autoStart');
 const moveToProcessed = document.getElementById('moveToProcessed');
@@ -63,6 +59,7 @@ async function loadConfig() {
 
   // Folders
   watchFolder.value = config.folders?.watch || '';
+  proclaimFolder.value = config.folders?.proclaim || '';
   processedFolder.value = config.folders?.processed || '';
   failedFolder.value = config.folders?.failed || '';
 
@@ -77,12 +74,6 @@ async function loadConfig() {
 
   // Logging
   logLevel.value = config.logging?.level || 'INFO';
-
-  // Export
-  exportEnabled.checked = config.export?.enabled ?? false;
-  exportFolder.value = config.export?.outputFolder || '';
-  exportInterval.value = config.export?.pollIntervalSeconds || 30;
-  exportFormat.value = config.export?.format || 'hl7';
 }
 
 // Save config
@@ -96,6 +87,7 @@ async function saveConfig() {
     },
     folders: {
       watch: watchFolder.value,
+      proclaim: proclaimFolder.value,
       processed: processedFolder.value,
       failed: failedFolder.value,
     },
@@ -112,13 +104,6 @@ async function saveConfig() {
       level: logLevel.value,
       maxFileSizeMB: 10,
       retentionDays: 7,
-    },
-    export: {
-      enabled: exportEnabled.checked,
-      outputFolder: exportFolder.value,
-      pollIntervalSeconds: parseInt(exportInterval.value, 10),
-      format: exportFormat.value,
-      fileNamePattern: 'DFT_{clinicCode}_{timestamp}.hl7',
     },
   };
 
@@ -148,6 +133,11 @@ document.getElementById('browseWatch').addEventListener('click', async () => {
   if (folder) watchFolder.value = folder;
 });
 
+document.getElementById('browseProClaim').addEventListener('click', async () => {
+  const folder = await ipcRenderer.invoke('select-folder');
+  if (folder) proclaimFolder.value = folder;
+});
+
 document.getElementById('browseProcessed').addEventListener('click', async () => {
   const folder = await ipcRenderer.invoke('select-folder');
   if (folder) processedFolder.value = folder;
@@ -156,11 +146,6 @@ document.getElementById('browseProcessed').addEventListener('click', async () =>
 document.getElementById('browseFailed').addEventListener('click', async () => {
   const folder = await ipcRenderer.invoke('select-folder');
   if (folder) failedFolder.value = folder;
-});
-
-document.getElementById('browseExport').addEventListener('click', async () => {
-  const folder = await ipcRenderer.invoke('select-folder');
-  if (folder) exportFolder.value = folder;
 });
 
 // Mutual exclusion for delete/move
