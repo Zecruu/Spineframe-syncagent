@@ -193,6 +193,7 @@ async function initializeApp(): Promise<void> {
   }
 
   // Start export service (if enabled)
+  logger.info(`Export config check: enabled=${config.export?.enabled}, outputFolder=${config.export?.outputFolder || 'NOT SET'}`);
   if (config.export?.enabled) {
     try {
       const apiClient = getApiClient();
@@ -200,10 +201,14 @@ async function initializeApp(): Promise<void> {
         exportService = new ExportService(config, apiClient);
         await exportService.start();
         logger.info('Export service started');
+      } else {
+        logger.warn('Export service NOT started - no API client');
       }
     } catch (error) {
       logger.error(`Failed to start export service: ${error}`);
     }
+  } else {
+    logger.info('Export service NOT started - export not enabled in config');
   }
 
   // Initialize auto-updater (only in production)
@@ -453,14 +458,17 @@ ipcMain.handle('wizard-complete', async (_event, newConfig: AppConfig) => {
   }
 
   // Start export service if enabled
+  logger.info(`[wizard-complete] Export config: enabled=${config.export?.enabled}, outputFolder=${config.export?.outputFolder || 'NOT SET'}`);
   if (config.export?.enabled && config.export?.outputFolder) {
     try {
       exportService = new ExportService(config, apiClient);
       await exportService.start();
-      logger.info('Export service started');
+      logger.info('Export service started after wizard');
     } catch (error) {
       logger.error(`Failed to start export service: ${error}`);
     }
+  } else {
+    logger.info('Export service NOT started after wizard - export not enabled or no output folder');
   }
 });
 

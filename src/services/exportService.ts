@@ -43,13 +43,15 @@ export class ExportService extends EventEmitter {
   }
 
   async start(): Promise<void> {
+    logger.info(`ExportService.start() called - enabled=${this.config.export?.enabled}, outputFolder=${this.config.export?.outputFolder || 'NOT SET'}`);
+
     if (!this.config.export?.enabled) {
-      logger.info('Export service disabled');
+      logger.info('Export service disabled - export.enabled is false');
       return;
     }
 
     if (!this.config.export.outputFolder) {
-      logger.warn('Export output folder not configured');
+      logger.warn('Export output folder not configured - export.outputFolder is empty');
       return;
     }
 
@@ -60,8 +62,10 @@ export class ExportService extends EventEmitter {
     }
 
     // Start polling
+    const intervalMs = (this.config.export?.pollIntervalSeconds || 30) * 1000;
+    logger.info(`Starting export polling every ${intervalMs / 1000} seconds`);
     this.startPolling();
-    logger.info('Export service started');
+    logger.info('Export service started successfully');
     this.emit('started');
   }
 
@@ -96,11 +100,16 @@ export class ExportService extends EventEmitter {
   }
 
   private async pollForExports(): Promise<void> {
-    if (this.isPaused) return;
+    if (this.isPaused) {
+      logger.info('Export poll skipped - service is paused');
+      return;
+    }
 
     try {
+      logger.info('Polling for pending exports...');
       const response = await this.apiClient.getPendingExports();
-      
+      logger.info(`Pending exports response: ok=${response.ok}, count=${response.count}`);
+
       if (response.ok && response.count > 0) {
         await this.processExports(response.claims, response.clinic);
       }
