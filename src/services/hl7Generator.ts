@@ -166,7 +166,9 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
 
   claim.billingCodes.forEach((code, index) => {
     const procedureCode = `${code.code}${HL7_COMPONENT_SEPARATOR}${code.description.toUpperCase()}`;
-    const modifiers = code.modifiers.length > 0 ? code.modifiers.join(HL7_REPETITION_SEPARATOR) : '';
+    // FT1.26 - Procedure Code Modifiers (up to 4 modifiers, tilde-separated)
+    const modifiersArray = (code.modifiers || []).slice(0, 4);
+    const modifiers = modifiersArray.length > 0 ? modifiersArray.join(HL7_REPETITION_SEPARATOR) : '';
     segments.push([
       'FT1',
       String(index + 1),                              // FT1.1 - Set ID

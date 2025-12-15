@@ -124,6 +124,14 @@ export class ExportService extends EventEmitter {
     this.emit('status', 'exporting');
     logger.info(`Processing ${claims.length} pending exports`);
 
+    // Log billing codes and modifiers for debugging
+    claims.forEach((claim, i) => {
+      logger.info(`Claim ${i + 1} (${claim.claimId}): ${claim.billingCodes.length} billing codes`);
+      claim.billingCodes.forEach((code, j) => {
+        logger.info(`  Code ${j + 1}: ${code.code}, modifiers: ${JSON.stringify(code.modifiers || [])}`);
+      });
+    });
+
     try {
       // Generate HL7 content for all claims
       const hl7Messages = claims.map(claim => generateDFTP03(claim, clinic));
