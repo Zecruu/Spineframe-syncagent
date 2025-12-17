@@ -1,6 +1,6 @@
 {
   "name": "spineframe-sync-agent",
-  "version": "1.0.20",
+  "version": "1.0.22",
   "description": "SpineFrame HL7 Sync Agent - Windows system tray application for syncing ProClaim HL7 files to SpineFrame cloud",
   "main": "dist/main/index.js",
   "scripts": {

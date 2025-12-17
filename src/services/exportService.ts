@@ -55,11 +55,8 @@ export class ExportService extends EventEmitter {
       return;
     }
 
-    // Ensure output folder exists
-    if (!fs.existsSync(this.config.export.outputFolder)) {
-      fs.mkdirSync(this.config.export.outputFolder, { recursive: true });
-      logger.info(`Created export folder: ${this.config.export.outputFolder}`);
-    }
+    // Ensure output folder exists (with retry for cloud drives like Google Drive)
+    await this.waitForFolderAccess(this.config.export.outputFolder);
 
     // Start polling
     const intervalMs = (this.config.export?.pollIntervalSeconds || 30) * 1000;
@@ -76,6 +73,33 @@ export class ExportService extends EventEmitter {
     }
     logger.info('Export service stopped');
     this.emit('stopped');
+  }
+
+  private async waitForFolderAccess(folder: string, maxRetries: number = 10, delayMs: number = 3000): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (fs.existsSync(folder)) {
+          logger.info(`Export folder accessible: ${folder}`);
+          return;
+        }
+        fs.mkdirSync(folder, { recursive: true });
+        logger.info(`Created export folder: ${folder}`);
+        return;
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        if (errMsg.includes('ENOENT') || errMsg.includes('EACCES') || errMsg.includes('EPERM')) {
+          logger.warn(`Export folder not accessible (attempt ${attempt}/${maxRetries}): ${folder}`);
+          if (attempt < maxRetries) {
+            logger.info(`Waiting ${delayMs/1000}s for cloud drive to mount...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          } else {
+            throw new Error(`Export folder not accessible after ${maxRetries} attempts: ${folder}`);
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
   }
 
   pause(): void {

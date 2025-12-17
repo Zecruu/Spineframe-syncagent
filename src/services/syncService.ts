@@ -45,16 +45,22 @@ export class SyncService extends EventEmitter {
   }
 
   async start(): Promise<void> {
+    logger.info('SyncService.start() called');
+
     if (!this.config.folders.watch) {
+      logger.error('Watch folder not configured - cannot start');
       throw new Error('Watch folder not configured');
     }
+    logger.info(`Watch folder: ${this.config.folders.watch}`);
 
-    // Ensure processed/failed folders exist
-    this.ensureFoldersExist();
+    // Ensure processed/failed folders exist (with retry for cloud drives)
+    await this.ensureFoldersExist();
+    logger.info('Folders ensured');
 
     // Initialize file watcher
+    logger.info('Initializing file watcher...');
     this.fileWatcher = new FileWatcherService(this.config.folders.watch);
-    
+
     this.fileWatcher.on('file-processing', (event: FileEvent) => {
       this.processFile(event);
     });
@@ -67,12 +73,15 @@ export class SyncService extends EventEmitter {
       this.addActivity('error', `File watcher error: ${error.message}`);
     });
 
+    logger.info('Starting file watcher...');
     await this.fileWatcher.start();
+    logger.info('File watcher started');
 
     // Start heartbeat
+    logger.info('About to start heartbeat...');
     this.startHeartbeat();
 
-    logger.info('Sync service started');
+    logger.info('Sync service fully started');
     this.emit('started');
   }
 
@@ -107,29 +116,67 @@ export class SyncService extends EventEmitter {
     return this.isPaused;
   }
 
-  private ensureFoldersExist(): void {
+  private async ensureFoldersExist(): Promise<void> {
     const folders = [
+      this.config.folders.watch,
       this.config.folders.processed,
       this.config.folders.failed,
     ];
 
     for (const folder of folders) {
-      if (folder && !fs.existsSync(folder)) {
+      if (folder) {
+        await this.waitForFolderAccess(folder);
+      }
+    }
+  }
+
+  private async waitForFolderAccess(folder: string, maxRetries: number = 10, delayMs: number = 3000): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Check if folder exists
+        if (fs.existsSync(folder)) {
+          logger.info(`Folder accessible: ${folder}`);
+          return;
+        }
+
+        // Try to create it
         fs.mkdirSync(folder, { recursive: true });
         logger.info(`Created folder: ${folder}`);
+        return;
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+
+        // Check if it's a drive not ready error (Google Drive, OneDrive, etc.)
+        if (errMsg.includes('ENOENT') || errMsg.includes('EACCES') || errMsg.includes('EPERM')) {
+          logger.warn(`Folder not accessible (attempt ${attempt}/${maxRetries}): ${folder} - ${errMsg}`);
+
+          if (attempt < maxRetries) {
+            logger.info(`Waiting ${delayMs/1000}s for cloud drive to mount...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          } else {
+            throw new Error(`Folder not accessible after ${maxRetries} attempts: ${folder}`);
+          }
+        } else {
+          throw error;
+        }
       }
     }
   }
 
   private startHeartbeat(): void {
     const intervalMs = this.config.behavior.syncIntervalSeconds * 1000;
-    
+    logger.info(`Starting heartbeat with interval: ${intervalMs}ms (${this.config.behavior.syncIntervalSeconds} seconds)`);
+
     // Send initial heartbeat
+    logger.info('Sending initial heartbeat...');
     this.sendHeartbeat();
 
     this.heartbeatInterval = setInterval(() => {
+      logger.info('Sending scheduled heartbeat...');
       this.sendHeartbeat();
     }, intervalMs);
+
+    logger.info('Heartbeat interval started successfully');
   }
 
   private async sendHeartbeat(): Promise<void> {

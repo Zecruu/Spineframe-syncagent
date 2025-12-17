@@ -184,8 +184,10 @@ async function initializeApp(): Promise<void> {
   });
 
   // Start sync service
+  logger.info('Attempting to start sync service...');
   try {
     await syncService.start();
+    logger.info('Sync service started successfully - heartbeat should be running');
     trayManager.setStatus('connected');
   } catch (error) {
     logger.error(`Failed to start sync service: ${error}`);
