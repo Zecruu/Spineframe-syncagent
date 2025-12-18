@@ -16,16 +16,26 @@ export interface FileEvent {
   createdAt: Date;
 }
 
+// Callback type for file processing
+export type FileProcessCallback = (event: FileEvent) => Promise<void>;
+
 export class FileWatcherService extends EventEmitter {
   private watcher: FSWatcher | null = null;
   private watchFolder: string;
   private pendingFiles: Map<string, NodeJS.Timeout> = new Map();
   private processingQueue: FileEvent[] = [];
   private isProcessing: boolean = false;
+  private processedFiles: Set<string> = new Set(); // Track processed files to avoid duplicates
+  private fileProcessCallback: FileProcessCallback | null = null;
 
   constructor(watchFolder: string) {
     super();
     this.watchFolder = watchFolder;
+  }
+
+  // Set callback for file processing (allows waiting for completion)
+  setFileProcessCallback(callback: FileProcessCallback): void {
+    this.fileProcessCallback = callback;
   }
 
   async start(): Promise<void> {
@@ -77,10 +87,16 @@ export class FileWatcherService extends EventEmitter {
 
   private onFileAdded(filePath: string): void {
     const ext = path.extname(filePath).toLowerCase();
-    
+
     // Only process valid extensions
     if (!VALID_EXTENSIONS.some(e => e.toLowerCase() === ext)) {
       logger.debug(`Ignoring non-HL7 file: ${filePath}`);
+      return;
+    }
+
+    // Skip if already processed (chokidar can fire multiple events for same file)
+    if (this.processedFiles.has(filePath)) {
+      logger.debug(`File already processed, skipping: ${filePath}`);
       return;
     }
 
@@ -163,14 +179,34 @@ export class FileWatcherService extends EventEmitter {
     const fileEvent = this.processingQueue.shift()!;
 
     try {
-      this.emit('file-processing', fileEvent);
+      // Mark as processed to prevent duplicate processing
+      this.processedFiles.add(fileEvent.filePath);
+
+      // If callback is set, use it and wait for completion
+      if (this.fileProcessCallback) {
+        logger.info(`Processing file via callback: ${fileEvent.fileName}`);
+        await this.fileProcessCallback(fileEvent);
+      } else {
+        // Fallback to event emission (but can't wait for completion)
+        this.emit('file-processing', fileEvent);
+      }
+    } catch (error) {
+      logger.error(`Error processing file ${fileEvent.fileName}: ${error}`);
+      // Remove from processed set so it can be retried
+      this.processedFiles.delete(fileEvent.filePath);
     } finally {
       this.isProcessing = false;
       // Process next file if any
       if (this.processingQueue.length > 0) {
+        logger.info(`Queue has ${this.processingQueue.length} more files, processing next...`);
         setImmediate(() => this.processNextFile());
       }
     }
+  }
+
+  // Clear processed files tracking (useful when files are moved/deleted)
+  clearProcessedFile(filePath: string): void {
+    this.processedFiles.delete(filePath);
   }
 
   getPendingCount(): number {

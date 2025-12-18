@@ -61,8 +61,9 @@ export class SyncService extends EventEmitter {
     logger.info('Initializing file watcher...');
     this.fileWatcher = new FileWatcherService(this.config.folders.watch);
 
-    this.fileWatcher.on('file-processing', (event: FileEvent) => {
-      this.processFile(event);
+    // Use callback for file processing so we wait for each file to complete
+    this.fileWatcher.setFileProcessCallback(async (event: FileEvent) => {
+      await this.processFile(event);
     });
 
     this.fileWatcher.on('file-queued', () => {
@@ -295,6 +296,9 @@ export class SyncService extends EventEmitter {
       fs.renameSync(filePath, destPath);
       logger.info(`Moved file to processed: ${fileName}`);
     }
+
+    // Clear from processed tracking since file is handled
+    this.fileWatcher?.clearProcessedFile(filePath);
   }
 
   private async handleFailedFile(filePath: string, error: Error): Promise<void> {
@@ -304,14 +308,19 @@ export class SyncService extends EventEmitter {
     this.stats.errorsToday++;
     logger.error(`Failed to process ${fileName}: ${error.message}`);
 
+    // Clear from processed tracking so it can be retried
+    this.fileWatcher?.clearProcessedFile(filePath);
+
     if (currentRetries < this.config.behavior.maxRetries) {
       this.retryCount.set(filePath, currentRetries + 1);
       this.addActivity('error', `Failed (retry ${currentRetries + 1}/${this.config.behavior.maxRetries}): ${error.message}`, fileName);
 
       // Re-queue for retry after delay
+      logger.info(`Scheduling retry ${currentRetries + 1} for ${fileName} in 5 seconds...`);
       setTimeout(() => {
         if (fs.existsSync(filePath)) {
-          this.fileWatcher?.emit('file-processing', { filePath, fileName, createdAt: new Date() });
+          // Directly call processFile for retry instead of emitting event
+          this.processFile({ filePath, fileName, createdAt: new Date() });
         }
       }, 5000);
     } else {
