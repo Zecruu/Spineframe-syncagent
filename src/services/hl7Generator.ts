@@ -120,6 +120,8 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
 
   // IN1 - Insurance
   const insuredName = `${(claim.patient.lastName || '').toUpperCase()}^${(claim.patient.firstName || '').toUpperCase()}`;
+  // SpineFrame uses "policyNumber" for what HL7 calls memberId
+  const memberId = claim.payer.policyNumber || claim.payer.memberId || '';
   segments.push([
     'IN1',
     '1',
@@ -154,7 +156,7 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
     '',
     '',
     '',
-    claim.payer.memberId
+    memberId                                            // IN1.36 - Policy Number / Member ID
   ].join(HL7_FIELD_SEPARATOR));
 
   // FT1 - Financial Transaction (one per billing code)

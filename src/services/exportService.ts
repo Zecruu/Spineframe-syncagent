@@ -75,8 +75,11 @@ export class ExportService extends EventEmitter {
     this.emit('stopped');
   }
 
-  private async waitForFolderAccess(folder: string, maxRetries: number = 10, delayMs: number = 3000): Promise<void> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  private async waitForFolderAccess(folder: string): Promise<void> {
+    let attempt = 0;
+
+    while (true) {
+      attempt++;
       try {
         if (fs.existsSync(folder)) {
           logger.info(`Export folder accessible: ${folder}`);
@@ -88,13 +91,15 @@ export class ExportService extends EventEmitter {
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
         if (errMsg.includes('ENOENT') || errMsg.includes('EACCES') || errMsg.includes('EPERM')) {
-          logger.warn(`Export folder not accessible (attempt ${attempt}/${maxRetries}): ${folder}`);
-          if (attempt < maxRetries) {
-            logger.info(`Waiting ${delayMs/1000}s for cloud drive to mount...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-          } else {
-            throw new Error(`Export folder not accessible after ${maxRetries} attempts: ${folder}`);
+          // Use longer delay after many attempts (30s after 10 attempts, 60s after 20)
+          const delayMs = attempt <= 10 ? 3000 : attempt <= 20 ? 30000 : 60000;
+
+          // Only log every few attempts after the first 10 to reduce log spam
+          if (attempt <= 10 || attempt % 10 === 0) {
+            logger.warn(`Export folder not accessible (attempt ${attempt}): ${folder} - waiting ${delayMs/1000}s...`);
           }
+
+          await new Promise(resolve => setTimeout(resolve, delayMs));
         } else {
           throw error;
         }
@@ -148,9 +153,11 @@ export class ExportService extends EventEmitter {
     this.emit('status', 'exporting');
     logger.info(`Processing ${claims.length} pending exports`);
 
-    // Log billing codes and modifiers for debugging
+    // Log claim details for debugging
     claims.forEach((claim, i) => {
       logger.info(`Claim ${i + 1} (${claim.claimId}): ${claim.billingCodes.length} billing codes`);
+      logger.info(`  Patient: ${claim.patient.firstName} ${claim.patient.lastName}, DOB: ${claim.patient.dob}`);
+      logger.info(`  Payer: ${claim.payer.name}, PayerID: ${claim.payer.payerId}, PolicyNumber: ${claim.payer.policyNumber || 'N/A'}, MemberId: ${claim.payer.memberId || 'N/A'}, Group: ${claim.payer.groupNumber || 'N/A'}`);
       claim.billingCodes.forEach((code, j) => {
         logger.info(`  Code ${j + 1}: ${code.code}, modifiers: ${JSON.stringify(code.modifiers || [])}`);
       });

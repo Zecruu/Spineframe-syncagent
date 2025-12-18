@@ -130,8 +130,11 @@ export class SyncService extends EventEmitter {
     }
   }
 
-  private async waitForFolderAccess(folder: string, maxRetries: number = 10, delayMs: number = 3000): Promise<void> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  private async waitForFolderAccess(folder: string): Promise<void> {
+    let attempt = 0;
+
+    while (true) {
+      attempt++;
       try {
         // Check if folder exists
         if (fs.existsSync(folder)) {
@@ -148,14 +151,15 @@ export class SyncService extends EventEmitter {
 
         // Check if it's a drive not ready error (Google Drive, OneDrive, etc.)
         if (errMsg.includes('ENOENT') || errMsg.includes('EACCES') || errMsg.includes('EPERM')) {
-          logger.warn(`Folder not accessible (attempt ${attempt}/${maxRetries}): ${folder} - ${errMsg}`);
+          // Use longer delay after many attempts (30s after 10 attempts, 60s after 20)
+          const delayMs = attempt <= 10 ? 3000 : attempt <= 20 ? 30000 : 60000;
 
-          if (attempt < maxRetries) {
-            logger.info(`Waiting ${delayMs/1000}s for cloud drive to mount...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-          } else {
-            throw new Error(`Folder not accessible after ${maxRetries} attempts: ${folder}`);
+          // Only log every few attempts after the first 10 to reduce log spam
+          if (attempt <= 10 || attempt % 10 === 0) {
+            logger.warn(`Folder not accessible (attempt ${attempt}): ${folder} - waiting ${delayMs/1000}s...`);
           }
+
+          await new Promise(resolve => setTimeout(resolve, delayMs));
         } else {
           throw error;
         }

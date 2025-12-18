@@ -160,7 +160,8 @@ export interface ExportPatientInfo {
 export interface ExportPayerInfo {
   name: string;
   payerId: string;
-  memberId: string;
+  memberId?: string;
+  policyNumber?: string;  // SpineFrame calls memberId "policyNumber"
   groupNumber?: string;
 }
 
