@@ -71,7 +71,8 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SpineFrame Sync Agent"
+      "shortcutName": "SpineFrame Sync Agent",
+      "artifactName": "SpineFrame-Sync-Agent-Setup-${version}.${ext}"
     }
   }
 }
