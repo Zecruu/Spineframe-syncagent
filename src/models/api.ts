@@ -160,6 +160,7 @@ export interface ExportPatientInfo {
 export interface ExportPayerInfo {
   name: string;
   payerId: string;
+  coverId?: string;       // Cover ID for IN1.2/IN1.3 formatting (PayerID^CoverID)
   memberId?: string;
   policyNumber?: string;  // SpineFrame calls memberId "policyNumber"
   groupNumber?: string;
@@ -209,9 +210,15 @@ export interface ExportClaim {
 export interface PendingExportsResponse {
   ok: boolean;
   count: number;
+  fetchId: string;        // NEW: Must save this for confirmation!
   format: string;
   clinic: ExportClinicInfo;
   claims: ExportClaim[];
+  _instructions?: {
+    confirmEndpoint: string;
+    timeoutSeconds: number;
+    requiredFields: string[];
+  };
 }
 
 export interface MarkExportedRequest {
@@ -225,5 +232,43 @@ export interface MarkExportedResponse {
   ok: boolean;
   markedCount: number;
   message: string;
+}
+
+// NEW: Confirm Export Types for Queue System (v2.2.27+)
+export interface ConfirmExportResult {
+  claimId: string;
+  success: boolean;
+  fileName?: string;
+  error?: string;
+}
+
+export interface ConfirmExportRequest {
+  fetchId: string;
+  hostname?: string;
+  results: ConfirmExportResult[];
+}
+
+export interface ConfirmExportResponse {
+  ok: boolean;
+  fetchId: string;
+  successCount: number;
+  failCount: number;
+  errors: Array<{ claimId: string; error: string }>;
+  message: string;
+}
+
+// Queue Status Types (optional monitoring)
+export interface QueueStatusResponse {
+  ok: boolean;
+  queue: {
+    pending: number;
+    fetched: number;
+    exported: number;
+    failed: number;
+    none: number;
+  };
+  failedForRetry: number;
+  permanentlyFailed: number;
+  totalPendingOrFetched: number;
 }
 

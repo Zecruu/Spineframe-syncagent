@@ -14,12 +14,15 @@ import {
   PendingExportsResponse,
   MarkExportedRequest,
   MarkExportedResponse,
+  ConfirmExportRequest,
+  ConfirmExportResponse,
+  ConfirmExportResult,
 } from '../models/api';
 import { AppConfig } from '../models/config';
 import { getLogger, maskApiKey } from './logger';
 
 const logger = getLogger('APIClient');
-const AGENT_VERSION = '1.0.13';
+const AGENT_VERSION = '1.0.26';
 
 export class SpineFrameApiClient {
   private client: AxiosInstance;
@@ -182,6 +185,18 @@ export class SpineFrameApiClient {
     };
     const response = await this.client.post<MarkExportedResponse>('/api/hl7/mark-exported', request);
     logger.info(`Marked ${response.data.markedCount} claims as exported`);
+    return response.data;
+  }
+
+  // NEW: Confirm export results (v2.2.27+ queue system)
+  async confirmExport(fetchId: string, results: ConfirmExportResult[]): Promise<ConfirmExportResponse> {
+    const request: ConfirmExportRequest = {
+      fetchId,
+      hostname: os.hostname(),
+      results,
+    };
+    const response = await this.client.post<ConfirmExportResponse>('/api/hl7/confirm-export', request);
+    logger.info(`Confirmed export: ${response.data.successCount} success, ${response.data.failCount} failed`);
     return response.data;
   }
 }

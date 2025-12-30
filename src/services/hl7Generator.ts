@@ -119,43 +119,53 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
   ].join(HL7_FIELD_SEPARATOR));
 
   // IN1 - Insurance
+  // Per ProClaim HL7 Implementation Guide (page 19):
+  // IN1.2 and IN1.3 must be formatted as PayerID^CoverID
   const insuredName = `${(claim.patient.lastName || '').toUpperCase()}^${(claim.patient.firstName || '').toUpperCase()}`;
   // SpineFrame uses "policyNumber" for what HL7 calls memberId
   const memberId = claim.payer.policyNumber || claim.payer.memberId || '';
+  // Format IN1.2/IN1.3 as PayerID^CoverID (e.g., "6605^88600")
+  const payerIdCoverIdFormat = claim.payer.coverId
+    ? `${claim.payer.payerId}${HL7_COMPONENT_SEPARATOR}${claim.payer.coverId}`
+    : claim.payer.payerId;
+
   segments.push([
     'IN1',
     '1',
-    '',
-    claim.payer.payerId,
-    claim.payer.name,
-    '',
-    '',
-    '',
-    claim.payer.groupNumber || '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    insuredName,
-    'self',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
+    payerIdCoverIdFormat,                               // IN1.2 - Insurance Plan ID (PayerID^CoverID)
+    payerIdCoverIdFormat,                               // IN1.3 - Insurance Company ID (PayerID^CoverID)
+    claim.payer.name,                                   // IN1.4 - Insurance Company Name
+    '',                                                 // IN1.5 - Insurance Company Address
+    '',                                                 // IN1.6 - Insurance Company Contact Person
+    '',                                                 // IN1.7 - Insurance Company Phone
+    claim.payer.groupNumber || '',                      // IN1.8 - Group Number
+    '',                                                 // IN1.9 - Group Name
+    '',                                                 // IN1.10 - Insured's Group Emp ID
+    '',                                                 // IN1.11 - Insured's Group Emp Name
+    '',                                                 // IN1.12 - Plan Effective Date
+    '',                                                 // IN1.13 - Plan Expiration Date
+    '',                                                 // IN1.14 - Authorization Information
+    '',                                                 // IN1.15 - Plan Type
+    '',                                                 // IN1.16 - Name Of Insured
+    insuredName,                                        // IN1.17 - Insured's Relationship To Patient
+    'self',                                             // IN1.18 - Insured's Date Of Birth
+    '',                                                 // IN1.19 - Insured's Address
+    '',                                                 // IN1.20 - Assignment Of Benefits
+    '',                                                 // IN1.21 - Coordination Of Benefits
+    '',                                                 // IN1.22 - Coord Of Ben. Priority
+    '',                                                 // IN1.23 - Notice Of Admission Flag
+    '',                                                 // IN1.24 - Notice Of Admission Date
+    '',                                                 // IN1.25 - Report Of Eligibility Flag
+    '',                                                 // IN1.26 - Report Of Eligibility Date
+    '',                                                 // IN1.27 - Release Information Code
+    '',                                                 // IN1.28 - Pre-Admit Cert
+    '',                                                 // IN1.29 - Verification Date/Time
+    '',                                                 // IN1.30 - Verification By
+    '',                                                 // IN1.31 - Type Of Agreement Code
+    '',                                                 // IN1.32 - Billing Status
+    '',                                                 // IN1.33 - Lifetime Reserve Days
+    '',                                                 // IN1.34 - Delay Before L.R. Day
+    '',                                                 // IN1.35 - Company Plan Code
     memberId                                            // IN1.36 - Policy Number / Member ID
   ].join(HL7_FIELD_SEPARATOR));
 

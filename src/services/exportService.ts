@@ -1,11 +1,12 @@
 // Export Service - Polls SpineFrame for pending claims and writes HL7 files to ProClaim import folder
+// Updated for SpineFrame v2.2.27+ queue system with confirmation flow
 
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { SpineFrameApiClient } from './apiClient';
 import { AppConfig } from '../models/config';
-import { ExportClaim, ExportClinicInfo } from '../models/api';
+import { ExportClaim, ExportClinicInfo, ConfirmExportResult } from '../models/api';
 import { generateDFTP03 } from './hl7Generator';
 import { getLogger } from './logger';
 
@@ -137,10 +138,11 @@ export class ExportService extends EventEmitter {
     try {
       logger.info('Polling for pending exports...');
       const response = await this.apiClient.getPendingExports();
-      logger.info(`Pending exports response: ok=${response.ok}, count=${response.count}`);
+      logger.info(`Pending exports response: ok=${response.ok}, count=${response.count}, fetchId=${response.fetchId || 'N/A'}`);
 
       if (response.ok && response.count > 0) {
-        await this.processExports(response.claims, response.clinic);
+        // Pass fetchId for new queue confirmation system (v2.2.27+)
+        await this.processExports(response.claims, response.clinic, response.fetchId);
       }
     } catch (error) {
       logger.error(`Export poll failed: ${error}`);
@@ -149,43 +151,99 @@ export class ExportService extends EventEmitter {
     }
   }
 
-  private async processExports(claims: ExportClaim[], clinic: ExportClinicInfo): Promise<void> {
+  private async processExports(claims: ExportClaim[], clinic: ExportClinicInfo, fetchId?: string): Promise<void> {
     this.emit('status', 'exporting');
-    logger.info(`Processing ${claims.length} pending exports`);
+    logger.info(`Processing ${claims.length} pending exports${fetchId ? ` (fetchId: ${fetchId})` : ''}`);
 
     // Log claim details for debugging
     claims.forEach((claim, i) => {
       logger.info(`Claim ${i + 1} (${claim.claimId}): ${claim.billingCodes.length} billing codes`);
       logger.info(`  Patient: ${claim.patient.firstName} ${claim.patient.lastName}, DOB: ${claim.patient.dob}`);
-      logger.info(`  Payer: ${claim.payer.name}, PayerID: ${claim.payer.payerId}, PolicyNumber: ${claim.payer.policyNumber || 'N/A'}, MemberId: ${claim.payer.memberId || 'N/A'}, Group: ${claim.payer.groupNumber || 'N/A'}`);
+      logger.info(`  Payer: ${claim.payer.name}, PayerID: ${claim.payer.payerId}, CoverId: ${claim.payer.coverId || 'N/A'}, PolicyNumber: ${claim.payer.policyNumber || 'N/A'}, MemberId: ${claim.payer.memberId || 'N/A'}, Group: ${claim.payer.groupNumber || 'N/A'}`);
       claim.billingCodes.forEach((code, j) => {
         logger.info(`  Code ${j + 1}: ${code.code}, modifiers: ${JSON.stringify(code.modifiers || [])}`);
       });
     });
 
+    // Track results for each claim (for new confirmation system)
+    const results: ConfirmExportResult[] = [];
+    let successCount = 0;
+    let failCount = 0;
+
     try {
-      // Generate HL7 content for all claims
-      const hl7Messages = claims.map(claim => generateDFTP03(claim, clinic));
-      const hl7Content = hl7Messages.join('\r\n');
+      // Process each claim individually for better error tracking
+      for (const claim of claims) {
+        try {
+          // Generate HL7 content for this claim
+          const hl7Content = generateDFTP03(claim, clinic);
 
-      // Generate filename
-      const fileName = this.generateFileName(clinic.code);
-      const filePath = path.join(this.config.export!.outputFolder, fileName);
+          // Generate unique filename per claim
+          const fileName = this.generateFileName(clinic.code, claim.claimId);
+          const filePath = path.join(this.config.export!.outputFolder, fileName);
 
-      // Write file
-      fs.writeFileSync(filePath, hl7Content, 'utf-8');
-      logger.info(`Wrote export file: ${fileName}`);
+          // Write file
+          fs.writeFileSync(filePath, hl7Content, 'utf-8');
+          logger.info(`Wrote export file: ${fileName} for claim ${claim.claimId}`);
 
-      // Mark claims as exported
-      const claimIds = claims.map(c => c.claimId);
-      await this.apiClient.markExported(claimIds, fileName, this.config.export!.format);
+          results.push({
+            claimId: claim.claimId,
+            success: true,
+            fileName,
+          });
+          successCount++;
+
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          logger.error(`Failed to export claim ${claim.claimId}: ${errorMsg}`);
+          results.push({
+            claimId: claim.claimId,
+            success: false,
+            error: errorMsg,
+          });
+          failCount++;
+        }
+      }
+
+      // Confirm results back to SpineFrame (new queue system v2.2.27+)
+      if (fetchId) {
+        try {
+          const confirmResponse = await this.apiClient.confirmExport(fetchId, results);
+          logger.info(`Export confirmation: ${confirmResponse.message}`);
+
+          if (confirmResponse.errors && confirmResponse.errors.length > 0) {
+            confirmResponse.errors.forEach(err => {
+              logger.warn(`Claim ${err.claimId} confirmation error: ${err.error}`);
+            });
+          }
+        } catch (confirmError) {
+          // Log but don't fail - claims are already written locally
+          logger.error(`Failed to confirm export with SpineFrame: ${confirmError}`);
+          this.addActivity('error', `Confirmation failed (files written locally): ${(confirmError as Error).message}`);
+        }
+      } else {
+        // Fallback: Use legacy markExported for older SpineFrame versions
+        if (successCount > 0) {
+          const successfulClaimIds = results.filter(r => r.success).map(r => r.claimId);
+          const anyFileName = results.find(r => r.success)?.fileName || 'unknown';
+          await this.apiClient.markExported(successfulClaimIds, anyFileName, this.config.export!.format);
+        }
+      }
 
       // Update stats
-      this.stats.exportedToday += claims.length;
-      this.stats.lastExportAt = new Date();
-      
-      this.addActivity('success', `Exported ${claims.length} claim(s)`, fileName);
-      this.emit('exported', { count: claims.length, fileName });
+      this.stats.exportedToday += successCount;
+      this.stats.errorsToday += failCount;
+      if (successCount > 0) {
+        this.stats.lastExportAt = new Date();
+      }
+
+      if (successCount > 0) {
+        this.addActivity('success', `Exported ${successCount} claim(s)${failCount > 0 ? `, ${failCount} failed` : ''}`);
+      }
+      if (failCount > 0 && successCount === 0) {
+        this.addActivity('error', `All ${failCount} claims failed to export`);
+      }
+
+      this.emit('exported', { count: successCount, failed: failCount });
       this.emit('stats-updated', this.stats);
 
     } catch (error) {
@@ -197,12 +255,16 @@ export class ExportService extends EventEmitter {
     }
   }
 
-  private generateFileName(clinicCode: string): string {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+  private generateFileName(clinicCode: string, claimId?: string): string {
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    // Add claim suffix for unique per-claim files
+    const claimSuffix = claimId ? `_${claimId.substring(claimId.length - 6)}` : '';
     const pattern = this.config.export?.fileNamePattern || 'DFT_{clinicCode}_{timestamp}.hl7';
     return pattern
       .replace('{clinicCode}', clinicCode)
-      .replace('{timestamp}', timestamp);
+      .replace('{timestamp}', timestamp)
+      .replace('.hl7', `${claimSuffix}.hl7`);
   }
 
   private addActivity(type: ExportActivityItem['type'], message: string, fileName?: string): void {
