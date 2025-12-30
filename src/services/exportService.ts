@@ -159,7 +159,9 @@ export class ExportService extends EventEmitter {
     claims.forEach((claim, i) => {
       logger.info(`Claim ${i + 1} (${claim.claimId}): ${claim.billingCodes.length} billing codes`);
       logger.info(`  Patient: ${claim.patient.firstName} ${claim.patient.lastName}, DOB: ${claim.patient.dob}`);
-      logger.info(`  Payer: ${claim.payer.name}, PayerID: ${claim.payer.payerId}, CoverId: ${claim.payer.coverId || 'N/A'}, PolicyNumber: ${claim.payer.policyNumber || 'N/A'}, MemberId: ${claim.payer.memberId || 'N/A'}, Group: ${claim.payer.groupNumber || 'N/A'}`);
+      logger.info(`  Payer: ${claim.payer.name}, PayerID: ${claim.payer.payerId}, CoverId: ${claim.payer.coverId || 'N/A'}`);
+      logger.info(`  IN1 Pre-formatted: in1_2="${claim.payer.in1_2 || 'N/A'}", in1_3="${claim.payer.in1_3 || 'N/A'}", in1_17="${claim.payer.in1_17 || 'N/A'}", in1_36="${claim.payer.in1_36 || 'N/A'}"`);
+      logger.info(`  PolicyNumber: ${claim.payer.policyNumber || 'N/A'}, MemberId: ${claim.payer.memberId || 'N/A'}, Group: ${claim.payer.groupNumber || 'N/A'}`);
       claim.billingCodes.forEach((code, j) => {
         logger.info(`  Code ${j + 1}: ${code.code}, modifiers: ${JSON.stringify(code.modifiers || [])}`);
       });

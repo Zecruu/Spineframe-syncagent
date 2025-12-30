@@ -160,11 +160,17 @@ export interface ExportPatientInfo {
 export interface ExportPayerInfo {
   name: string;
   payerId: string;
-  coverId?: string;           // Cover ID for IN1.2/IN1.3 formatting (PayerID^CoverID)
+  coverId?: string;           // Cover ID (raw value)
   memberId?: string;
   policyNumber?: string;      // SpineFrame calls memberId "policyNumber"
   groupNumber?: string;
   relationshipCode?: string;  // Pre-mapped relationship code (e.g., "18" for self)
+
+  // Pre-formatted IN1 field values from SpineFrame - USE THESE DIRECTLY!
+  in1_2?: string;   // Insurance Plan ID (e.g., "6605^88600") - copy as-is
+  in1_3?: string;   // Insurance Company ID (e.g., "6605^88600") - copy as-is
+  in1_17?: string;  // Relationship code (e.g., "18") - copy as-is
+  in1_36?: string;  // Policy Number / Member ID - copy as-is
 }
 
 export interface ExportBillingCode {

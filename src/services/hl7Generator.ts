@@ -120,22 +120,23 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
 
   // IN1 - Insurance
   // Per ProClaim HL7 Implementation Guide (page 19):
-  // IN1.2 and IN1.3 must be formatted as PayerID^CoverID
+  // SpineFrame now sends pre-formatted IN1 values - USE THEM DIRECTLY!
   const insuredName = `${(claim.patient.lastName || '').toUpperCase()}^${(claim.patient.firstName || '').toUpperCase()}`;
-  // SpineFrame uses "policyNumber" for what HL7 calls memberId
-  const memberId = claim.payer.policyNumber || claim.payer.memberId || '';
-  // Format IN1.2/IN1.3 as PayerID^CoverID (e.g., "6605^88600")
-  const payerIdCoverIdFormat = claim.payer.coverId
-    ? `${claim.payer.payerId}${HL7_COMPONENT_SEPARATOR}${claim.payer.coverId}`
-    : claim.payer.payerId;
-  // Relationship code - use directly from API (already mapped, e.g., "18" for self)
-  const relationshipCode = claim.payer.relationshipCode || '18'; // Default to self
+
+  // USE PRE-FORMATTED VALUES FROM SPINEFRAME API (with ^ separator already included!)
+  // Fallback to constructing them only if pre-formatted values not available
+  const in1_2 = claim.payer.in1_2 ||
+    (claim.payer.coverId ? `${claim.payer.payerId}^${claim.payer.coverId}` : claim.payer.payerId);
+  const in1_3 = claim.payer.in1_3 ||
+    (claim.payer.coverId ? `${claim.payer.payerId}^${claim.payer.coverId}` : claim.payer.payerId);
+  const in1_17 = claim.payer.in1_17 || claim.payer.relationshipCode || '18';
+  const in1_36 = claim.payer.in1_36 || claim.payer.policyNumber || claim.payer.memberId || '';
 
   segments.push([
     'IN1',
     '1',
-    payerIdCoverIdFormat,                               // IN1.2 - Insurance Plan ID (PayerID^CoverID)
-    payerIdCoverIdFormat,                               // IN1.3 - Insurance Company ID (PayerID^CoverID)
+    in1_2,                                              // IN1.2 - Insurance Plan ID (e.g., "6605^88600")
+    in1_3,                                              // IN1.3 - Insurance Company ID (e.g., "6605^88600")
     claim.payer.name,                                   // IN1.4 - Insurance Company Name
     '',                                                 // IN1.5 - Insurance Company Address
     '',                                                 // IN1.6 - Insurance Company Contact Person
@@ -149,7 +150,7 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
     '',                                                 // IN1.14 - Authorization Information
     '',                                                 // IN1.15 - Plan Type
     insuredName,                                        // IN1.16 - Name Of Insured (LASTNAME^FIRSTNAME)
-    relationshipCode,                                   // IN1.17 - Relationship Code (e.g., "18" for self)
+    in1_17,                                             // IN1.17 - Relationship Code (e.g., "18" for self)
     dobFormatted,                                       // IN1.18 - Insured's Date Of Birth (YYYYMMDD)
     '',                                                 // IN1.19 - Insured's Address
     '',                                                 // IN1.20 - Assignment Of Benefits
@@ -168,7 +169,7 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
     '',                                                 // IN1.33 - Lifetime Reserve Days
     '',                                                 // IN1.34 - Delay Before L.R. Day
     '',                                                 // IN1.35 - Company Plan Code
-    memberId                                            // IN1.36 - Policy Number / Member ID
+    in1_36                                              // IN1.36 - Policy Number / Member ID
   ].join(HL7_FIELD_SEPARATOR));
 
   // FT1 - Financial Transaction (one per billing code)
