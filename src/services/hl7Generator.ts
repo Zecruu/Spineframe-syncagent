@@ -1,6 +1,9 @@
 // HL7 DFT^P03 Message Generator for Export (SpineFrame → ProClaim)
 
 import { ExportClaim, ExportClinicInfo } from '../models/api';
+import { getLogger } from './logger';
+
+const logger = getLogger('HL7Generator');
 
 const HL7_SEGMENT_SEPARATOR = '\r';
 const HL7_FIELD_SEPARATOR = '|';
@@ -120,17 +123,36 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
 
   // IN1 - Insurance
   // Per ProClaim HL7 Implementation Guide (page 19):
-  // SpineFrame now sends pre-formatted IN1 values - USE THEM DIRECTLY!
+  // SpineFrame v2.2.30+ sends pre-formatted IN1 values - USE THEM DIRECTLY!
   const insuredName = `${(claim.patient.lastName || '').toUpperCase()}^${(claim.patient.firstName || '').toUpperCase()}`;
 
-  // USE PRE-FORMATTED VALUES FROM SPINEFRAME API (with ^ separator already included!)
-  // Fallback to constructing them only if pre-formatted values not available
-  const in1_2 = claim.payer.in1_2 ||
-    (claim.payer.coverId ? `${claim.payer.payerId}^${claim.payer.coverId}` : claim.payer.payerId);
-  const in1_3 = claim.payer.in1_3 ||
-    (claim.payer.coverId ? `${claim.payer.payerId}^${claim.payer.coverId}` : claim.payer.payerId);
-  const in1_17 = claim.payer.in1_17 || claim.payer.relationshipCode || '18';
-  const in1_36 = claim.payer.in1_36 || claim.payer.policyNumber || claim.payer.memberId || '';
+  // CRITICAL: Use pre-formatted IN1 values from SpineFrame API (contains ^ separator!)
+  // Only fallback to manual construction if pre-formatted values are missing/empty
+  // Check for truthy AND non-empty string (empty string would be falsy but '' || fallback would still work)
+  const in1_2 = (claim.payer.in1_2 && claim.payer.in1_2.length > 0)
+    ? claim.payer.in1_2
+    : (claim.payer.coverId ? `${claim.payer.payerId}${HL7_COMPONENT_SEPARATOR}${claim.payer.coverId}` : claim.payer.payerId || '');
+
+  const in1_3 = (claim.payer.in1_3 && claim.payer.in1_3.length > 0)
+    ? claim.payer.in1_3
+    : (claim.payer.coverId ? `${claim.payer.payerId}${HL7_COMPONENT_SEPARATOR}${claim.payer.coverId}` : claim.payer.payerId || '');
+
+  // IN1.17 - Relationship code (MUST be numeric like "18", NOT text like "self")
+  const in1_17 = (claim.payer.in1_17 && claim.payer.in1_17.length > 0)
+    ? claim.payer.in1_17
+    : (claim.payer.relationshipCode || '18');
+
+  // IN1.36 - Policy Number / Member ID
+  const in1_36 = (claim.payer.in1_36 && claim.payer.in1_36.length > 0)
+    ? claim.payer.in1_36
+    : (claim.payer.policyNumber || claim.payer.memberId || '');
+
+  // Debug: Log what IN1 values we're using
+  logger.debug(`IN1 field values for claim ${claim.claimId}:`);
+  logger.debug(`  API in1_2="${claim.payer.in1_2}" → using="${in1_2}"`);
+  logger.debug(`  API in1_3="${claim.payer.in1_3}" → using="${in1_3}"`);
+  logger.debug(`  API in1_17="${claim.payer.in1_17}" → using="${in1_17}"`);
+  logger.debug(`  API in1_36="${claim.payer.in1_36}" → using="${in1_36}"`);
 
   segments.push([
     'IN1',
