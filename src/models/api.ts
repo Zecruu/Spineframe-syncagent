@@ -160,10 +160,11 @@ export interface ExportPatientInfo {
 export interface ExportPayerInfo {
   name: string;
   payerId: string;
-  coverId?: string;       // Cover ID for IN1.2/IN1.3 formatting (PayerID^CoverID)
+  coverId?: string;           // Cover ID for IN1.2/IN1.3 formatting (PayerID^CoverID)
   memberId?: string;
-  policyNumber?: string;  // SpineFrame calls memberId "policyNumber"
+  policyNumber?: string;      // SpineFrame calls memberId "policyNumber"
   groupNumber?: string;
+  relationshipCode?: string;  // Pre-mapped relationship code (e.g., "18" for self)
 }
 
 export interface ExportBillingCode {

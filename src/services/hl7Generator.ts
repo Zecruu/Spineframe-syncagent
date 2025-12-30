@@ -128,6 +128,8 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
   const payerIdCoverIdFormat = claim.payer.coverId
     ? `${claim.payer.payerId}${HL7_COMPONENT_SEPARATOR}${claim.payer.coverId}`
     : claim.payer.payerId;
+  // Relationship code - use directly from API (already mapped, e.g., "18" for self)
+  const relationshipCode = claim.payer.relationshipCode || '18'; // Default to self
 
   segments.push([
     'IN1',
@@ -146,9 +148,9 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
     '',                                                 // IN1.13 - Plan Expiration Date
     '',                                                 // IN1.14 - Authorization Information
     '',                                                 // IN1.15 - Plan Type
-    '',                                                 // IN1.16 - Name Of Insured
-    insuredName,                                        // IN1.17 - Insured's Relationship To Patient
-    'self',                                             // IN1.18 - Insured's Date Of Birth
+    insuredName,                                        // IN1.16 - Name Of Insured (LASTNAME^FIRSTNAME)
+    relationshipCode,                                   // IN1.17 - Relationship Code (e.g., "18" for self)
+    dobFormatted,                                       // IN1.18 - Insured's Date Of Birth (YYYYMMDD)
     '',                                                 // IN1.19 - Insured's Address
     '',                                                 // IN1.20 - Assignment Of Benefits
     '',                                                 // IN1.21 - Coordination Of Benefits
