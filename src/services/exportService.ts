@@ -1,13 +1,14 @@
 // Export Service - Polls SpineFrame for pending claims and writes HL7 files to ProClaim import folder
 // Updated for SpineFrame v2.2.27+ queue system with confirmation flow
+// Updated to support ADT^A08 patient insurance update exports
 
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { SpineFrameApiClient } from './apiClient';
 import { AppConfig } from '../models/config';
-import { ExportClaim, ExportClinicInfo, ConfirmExportResult } from '../models/api';
-import { generateDFTP03 } from './hl7Generator';
+import { ExportClaim, ExportClinicInfo, ConfirmExportResult, AdtExport, ConfirmAdtExportResult } from '../models/api';
+import { generateDFTP03, generateADTA08 } from './hl7Generator';
 import { getLogger } from './logger';
 
 const logger = getLogger('ExportService');
@@ -135,6 +136,7 @@ export class ExportService extends EventEmitter {
       return;
     }
 
+    // Poll for DFT (claims) exports
     try {
       logger.info('Polling for pending exports...');
       const response = await this.apiClient.getPendingExports();
@@ -148,6 +150,34 @@ export class ExportService extends EventEmitter {
       logger.error(`Export poll failed: ${error}`);
       this.stats.errorsToday++;
       this.addActivity('error', `Poll failed: ${(error as Error).message}`);
+    }
+
+    // Poll for ADT (patient insurance update) exports
+    // Check if ADT exports are enabled (default: true)
+    const adtEnabled = this.config.export?.adt?.enabled !== false;
+    if (adtEnabled) {
+      await this.pollForAdtExports();
+    }
+  }
+
+  private async pollForAdtExports(): Promise<void> {
+    try {
+      const response = await this.apiClient.getPendingAdtExports();
+
+      if (response.ok && response.count > 0) {
+        logger.info(`Pending ADT exports response: ok=${response.ok}, count=${response.count}, fetchId=${response.fetchId}`);
+        await this.processAdtExports(response.exports, response.fetchId);
+      }
+    } catch (error) {
+      // Don't fail if ADT endpoint doesn't exist (older SpineFrame versions)
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (errMsg.includes('404') || errMsg.includes('Not Found')) {
+        // Endpoint doesn't exist - silently skip
+        logger.debug('ADT export endpoint not available (older SpineFrame version)');
+      } else {
+        logger.error(`ADT export poll failed: ${error}`);
+        this.addActivity('error', `ADT poll failed: ${errMsg}`);
+      }
     }
   }
 
@@ -292,5 +322,101 @@ export class ExportService extends EventEmitter {
       this.apiClient = apiClient;
     }
   }
-}
 
+  /**
+   * Process ADT^A08 exports for patient insurance updates
+   */
+  private async processAdtExports(exports: AdtExport[], fetchId: string): Promise<void> {
+    this.emit('status', 'exporting');
+    logger.info(`Processing ${exports.length} pending ADT exports (fetchId: ${fetchId})`);
+
+    const results: ConfirmAdtExportResult[] = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const adtExport of exports) {
+      try {
+        // Validate: proclaimPatientRecord is required
+        if (!adtExport.patient.proclaimPatientRecord) {
+          throw new Error('Missing proclaimPatientRecord - patient does not exist in ProClaim');
+        }
+
+        // Log details
+        logger.info(`ADT Export (${adtExport.queueId}): Patient ${adtExport.patient.proclaimPatientRecord} - ${adtExport.patient.lastName}, ${adtExport.patient.firstName}`);
+        logger.info(`  Trigger: ${adtExport.trigger}, Insurance count: ${adtExport.insurance.length}`);
+        adtExport.insurance.forEach((ins, i) => {
+          logger.info(`  Insurance ${i + 1}: ${ins.provider}, PayerID: ${ins.payerId}, CoverId: ${ins.coverId || 'N/A'}, MemberId: ${ins.memberId}`);
+        });
+
+        // Generate ADT^A08 message
+        const clinicCode = this.config.api.clinicId;
+        const emrLinkType = this.config.export?.emrLinkType || 'EMD85';
+        const hl7Content = generateADTA08(adtExport, clinicCode, emrLinkType);
+
+        // Generate filename
+        const fileName = this.generateAdtFileName(adtExport.patient.proclaimPatientRecord);
+        const filePath = path.join(this.config.export!.outputFolder, fileName);
+
+        // Write file
+        fs.writeFileSync(filePath, hl7Content, 'utf-8');
+        logger.info(`Wrote ADT export file: ${fileName} for patient ${adtExport.patient.proclaimPatientRecord}`);
+
+        results.push({
+          queueId: adtExport.queueId,
+          success: true,
+          fileName,
+        });
+        successCount++;
+        this.stats.exportedToday++;
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed to export ADT for queue ${adtExport.queueId}: ${errorMsg}`);
+        results.push({
+          queueId: adtExport.queueId,
+          success: false,
+          error: errorMsg,
+        });
+        failCount++;
+        this.stats.errorsToday++;
+      }
+    }
+
+    // Confirm results back to SpineFrame
+    try {
+      const confirmResponse = await this.apiClient.confirmAdtExport(fetchId, results);
+      logger.info(`ADT Export confirmation: ${confirmResponse.message}`);
+
+      if (confirmResponse.errors && confirmResponse.errors.length > 0) {
+        confirmResponse.errors.forEach(err => {
+          logger.warn(`ADT queue ${err.queueId} confirmation error: ${err.error}`);
+        });
+      }
+    } catch (confirmError) {
+      logger.error(`Failed to confirm ADT export with SpineFrame: ${confirmError}`);
+      this.addActivity('error', `ADT confirmation failed (files written locally): ${(confirmError as Error).message}`);
+    }
+
+    // Update stats
+    if (successCount > 0) {
+      this.stats.lastExportAt = new Date();
+      this.addActivity('success', `Exported ${successCount} ADT update(s)${failCount > 0 ? `, ${failCount} failed` : ''}`);
+    }
+    if (failCount > 0 && successCount === 0) {
+      this.addActivity('error', `All ${failCount} ADT exports failed`);
+    }
+
+    this.emit('exported', { count: successCount, failed: failCount, type: 'ADT' });
+    this.emit('stats-updated', this.stats);
+    this.emit('status', 'idle');
+  }
+
+  /**
+   * Generate filename for ADT^A08 files
+   */
+  private generateAdtFileName(proclaimPatientRecord: string): string {
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    return `ADT_A08_${proclaimPatientRecord}_${timestamp}.hl7`;
+  }
+}

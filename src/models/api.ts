@@ -279,3 +279,69 @@ export interface QueueStatusResponse {
   totalPendingOrFetched: number;
 }
 
+// ADT^A08 Export Types (Patient Insurance Updates)
+export interface AdtPatientInfo {
+  proclaimPatientRecord: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  dateOfBirth: string;
+  sex: string;
+  ssn?: string;
+  phone?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+}
+
+export interface AdtInsuranceInfo {
+  rank: number;
+  provider: string;
+  memberId: string;
+  groupNumber?: string;
+  payerId: string;
+  coverId?: string;
+  planType?: string;
+  subscriberRelationship: string;
+}
+
+export interface AdtExport {
+  queueId: string;
+  messageType: string;
+  trigger: string;
+  patient: AdtPatientInfo;
+  insurance: AdtInsuranceInfo[];
+}
+
+export interface PendingAdtExportsResponse {
+  ok: boolean;
+  count: number;
+  fetchId: string;
+  exports: AdtExport[];
+}
+
+export interface ConfirmAdtExportResult {
+  queueId: string;
+  success: boolean;
+  fileName?: string;
+  error?: string;
+}
+
+export interface ConfirmAdtExportRequest {
+  fetchId: string;
+  hostname?: string;
+  results: ConfirmAdtExportResult[];
+}
+
+export interface ConfirmAdtExportResponse {
+  ok: boolean;
+  fetchId: string;
+  successCount: number;
+  failCount: number;
+  errors: Array<{ queueId: string; error: string }>;
+  message: string;
+}
+

@@ -28,12 +28,18 @@ export interface LoggingConfig {
   retentionDays: number;
 }
 
+export interface AdtExportConfig {
+  enabled: boolean;  // Enable ADT^A08 patient insurance update exports (default: true)
+}
+
 export interface ExportConfig {
   enabled: boolean;
   pollIntervalSeconds: number;
   outputFolder: string;
   format: 'hl7' | 'x12' | 'csv' | 'json';
   fileNamePattern: string;
+  emrLinkType?: string;  // EMR link type for HL7 messages (default: EMD85)
+  adt?: AdtExportConfig;  // ADT export settings
 }
 
 export interface AppConfig {
@@ -76,7 +82,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     pollIntervalSeconds: 30,
     outputFolder: '',
     format: 'hl7',
-    fileNamePattern: 'DFT_{clinicCode}_{timestamp}.hl7'
+    fileNamePattern: 'DFT_{clinicCode}_{timestamp}.hl7',
+    emrLinkType: 'EMD85',
+    adt: {
+      enabled: true  // ADT^A08 patient insurance updates enabled by default
+    }
   }
 };
 

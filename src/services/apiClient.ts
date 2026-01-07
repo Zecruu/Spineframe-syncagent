@@ -17,12 +17,16 @@ import {
   ConfirmExportRequest,
   ConfirmExportResponse,
   ConfirmExportResult,
+  PendingAdtExportsResponse,
+  ConfirmAdtExportRequest,
+  ConfirmAdtExportResponse,
+  ConfirmAdtExportResult,
 } from '../models/api';
 import { AppConfig } from '../models/config';
 import { getLogger, maskApiKey } from './logger';
 
 const logger = getLogger('APIClient');
-const AGENT_VERSION = '1.0.29';
+const AGENT_VERSION = '1.0.30';
 
 export class SpineFrameApiClient {
   private client: AxiosInstance;
@@ -197,6 +201,26 @@ export class SpineFrameApiClient {
     };
     const response = await this.client.post<ConfirmExportResponse>('/api/hl7/confirm-export', request);
     logger.info(`Confirmed export: ${response.data.successCount} success, ${response.data.failCount} failed`);
+    return response.data;
+  }
+
+  // ADT^A08 Export endpoints (Patient Insurance Updates)
+  async getPendingAdtExports(): Promise<PendingAdtExportsResponse> {
+    const response = await this.client.get<PendingAdtExportsResponse>('/api/hl7/pending-adt-exports');
+    if (response.data.count > 0) {
+      logger.info(`Retrieved ${response.data.count} pending ADT exports`);
+    }
+    return response.data;
+  }
+
+  async confirmAdtExport(fetchId: string, results: ConfirmAdtExportResult[]): Promise<ConfirmAdtExportResponse> {
+    const request: ConfirmAdtExportRequest = {
+      fetchId,
+      hostname: os.hostname(),
+      results,
+    };
+    const response = await this.client.post<ConfirmAdtExportResponse>('/api/hl7/confirm-adt-export', request);
+    logger.info(`Confirmed ADT export: ${response.data.successCount} success, ${response.data.failCount} failed`);
     return response.data;
   }
 }

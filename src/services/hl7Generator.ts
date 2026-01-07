@@ -1,6 +1,7 @@
-// HL7 DFT^P03 Message Generator for Export (SpineFrame → ProClaim)
+// HL7 Message Generator for Export (SpineFrame → ProClaim)
+// Supports: DFT^P03 (Claims), ADT^A08 (Patient Insurance Updates)
 
-import { ExportClaim, ExportClinicInfo } from '../models/api';
+import { ExportClaim, ExportClinicInfo, AdtExport, AdtInsuranceInfo } from '../models/api';
 import { getLogger } from './logger';
 
 const logger = getLogger('HL7Generator');
@@ -253,3 +254,157 @@ export function generateDFTP03(claim: ExportClaim, clinic: ExportClinicInfo): st
   return segments.join(HL7_SEGMENT_SEPARATOR);
 }
 
+/**
+ * Map relationship text to HL7 numeric code
+ * Per HL7 v2.x Table 0063 - Relationship
+ */
+function mapRelationshipToCode(relationship: string): string {
+  const relationshipMap: Record<string, string> = {
+    'self': '18',
+    'spouse': '01',
+    'child': '19',
+    'parent': '32',
+    'other': '29',
+    'employee': '20',
+    'unknown': 'UN',
+  };
+  // If already numeric, return as-is
+  if (/^\d+$/.test(relationship)) {
+    return relationship;
+  }
+  return relationshipMap[relationship.toLowerCase()] || '18'; // Default to self
+}
+
+/**
+ * Generate ADT^A08 message for patient insurance updates
+ * Used to update ProClaim's patient master record with new insurance info
+ */
+export function generateADTA08(adtExport: AdtExport, clinicCode: string, emrLinkType: string = 'EMD85'): string {
+  const segments: string[] = [];
+  const timestamp = formatDateTime(new Date().toISOString());
+  const controlId = `SPFADT${Date.now().toString(36).toUpperCase()}`;
+
+  const patient = adtExport.patient;
+  const dobFormatted = patient.dateOfBirth ? formatDate(patient.dateOfBirth) : '';
+
+  // MSH - Message Header (HL7 v2.3 for ADT)
+  segments.push([
+    'MSH',
+    '^~\\&',
+    'SPINEFRAME',
+    clinicCode,
+    'PROCLAIM',
+    emrLinkType,
+    timestamp,
+    '',
+    'ADT^A08',
+    controlId,
+    'P',
+    '2.3'
+  ].join(HL7_FIELD_SEPARATOR));
+
+  // EVN - Event Type
+  segments.push([
+    'EVN',
+    'A08',
+    timestamp
+  ].join(HL7_FIELD_SEPARATOR));
+
+  // PID - Patient Identification
+  const patientName = `${(patient.lastName || '').toUpperCase()}^${(patient.firstName || '').toUpperCase()}^${(patient.middleName || '').toUpperCase()}`;
+  const patientAddress = patient.address
+    ? `${(patient.address.street || '').toUpperCase()}^^${(patient.address.city || '').toUpperCase()}^${(patient.address.state || '').toUpperCase()}^${patient.address.zip || ''}`
+    : '';
+  const phone = (patient.phone || '').replace(/\D/g, ''); // Remove non-digits
+
+  segments.push([
+    'PID',
+    '1',
+    '',
+    `${patient.proclaimPatientRecord}^^^PROCLAIM`,  // PID.3 - Patient ID with assigning authority
+    '',
+    patientName,                                      // PID.5 - Patient Name
+    '',
+    dobFormatted,                                     // PID.7 - Date of Birth
+    patient.sex || 'U',                               // PID.8 - Sex
+    '',
+    '',
+    patientAddress,                                   // PID.11 - Address
+    '',
+    phone                                             // PID.13 - Phone
+  ].join(HL7_FIELD_SEPARATOR));
+
+  // PV1 - Patient Visit (minimal for ADT^A08)
+  segments.push([
+    'PV1',
+    '1',
+    'O'  // Outpatient
+  ].join(HL7_FIELD_SEPARATOR));
+
+  // IN1 - Insurance segments (one per insurance, sorted by rank)
+  const sortedInsurance = [...adtExport.insurance].sort((a, b) => a.rank - b.rank);
+
+  sortedInsurance.forEach((ins, index) => {
+    const in1Segment = generateIN1Segment(ins, index + 1);
+    segments.push(in1Segment);
+  });
+
+  logger.debug(`Generated ADT^A08 for patient ${patient.proclaimPatientRecord} with ${sortedInsurance.length} insurance(s)`);
+
+  return segments.join(HL7_SEGMENT_SEPARATOR);
+}
+
+/**
+ * Generate IN1 segment for ADT^A08 message
+ */
+function generateIN1Segment(insurance: AdtInsuranceInfo, setId: number): string {
+  // Format IN1.2/IN1.3 as PayerID^CoverID
+  const payerIdCoverId = insurance.coverId
+    ? `${insurance.payerId}${HL7_COMPONENT_SEPARATOR}${insurance.coverId}`
+    : insurance.payerId;
+
+  const relationshipCode = mapRelationshipToCode(insurance.subscriberRelationship);
+
+  logger.debug(`IN1.${setId}: payerId=${insurance.payerId}, coverId=${insurance.coverId}, formatted=${payerIdCoverId}, relationship=${relationshipCode}`);
+
+  const fields = [
+    'IN1',
+    String(setId),                                    // IN1.1 - Set ID
+    payerIdCoverId,                                   // IN1.2 - Insurance Plan ID (PayerID^CoverID)
+    payerIdCoverId,                                   // IN1.3 - Insurance Company ID (PayerID^CoverID)
+    insurance.provider || '',                         // IN1.4 - Insurance Company Name
+    '',                                               // IN1.5 - Insurance Company Address
+    '',                                               // IN1.6 - Insurance Company Contact Person
+    '',                                               // IN1.7 - Insurance Company Phone
+    insurance.groupNumber || '',                      // IN1.8 - Group Number
+    '',                                               // IN1.9 - Group Name
+    '',                                               // IN1.10-16
+    '',
+    '',
+    '',
+    '',
+    '',
+    relationshipCode,                                 // IN1.17 - Relationship Code (18=self, 01=spouse, 19=child)
+    '',                                               // IN1.18-35
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    insurance.memberId || ''                          // IN1.36 - Policy Number / Member ID
+  ];
+
+  return fields.join(HL7_FIELD_SEPARATOR);
+}
